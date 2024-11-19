@@ -1,0 +1,158 @@
+{
+  "C.1": {
+    "type_number": 1,
+    "radius": 1.88
+  },
+  "C.2": {
+    "type_number": 2,
+    "radius": 1.72
+  },
+  "C.3": {
+    "type_number": 3,
+    "radius": 1.88
+  },
+  "C.AR": {
+    "type_number": 4,
+    "radius": 1.76
+  },
+  "C.CAT": {
+    "type_number": 5,
+    "radius": 1.88
+  },
+  "N.1": {
+    "type_number": 6,
+    "radius": 1.64
+  },
+  "N.2": {
+    "type_number": 7,
+    "radius": 1.64
+  },
+  "N.3": {
+    "type_number": 8,
+    "radius": 1.64
+  },
+  "N.4": {
+    "type_number": 9,
+    "radius": 1.64
+  },
+  "N.AR": {
+    "type_number": 10,
+    "radius": 1.64
+  },
+  "N.AM": {
+    "type_number": 11,
+    "radius": 1.64
+  },
+  "N.PL3": {
+    "type_number": 12,
+    "radius": 1.64
+  },
+  "O.2": {
+    "type_number": 13,
+    "radius": 1.42
+  },
+  "O.3": {
+    "type_number": 14,
+    "radius": 1.46
+  },
+  "O.CO2": {
+    "type_number": 15,
+    "radius": 1.46
+  },
+  "O.AR": {
+    "type_number": 16,
+    "radius": 1.46
+  },
+  "S.2": {
+    "type_number": 17,
+    "radius": 1.782
+  },
+  "S.3": {
+    "type_number": 18,
+    "radius": 1.782
+  },
+  "S.O": {
+    "type_number": 19,
+    "radius": 1.782
+  },
+  "S.O2": {
+    "type_number": 20,
+    "radius": 1.782
+  },
+  "S.AR": {
+    "type_number": 21,
+    "radius": 1.782
+  },
+  "P.3": {
+    "type_number": 22,
+    "radius": 1.871
+  },
+  "F": {
+    "type_number": 23,
+    "radius": 1.56
+  },
+  "CL": {
+    "type_number": 24,
+    "radius": 1.735
+  },
+  "BR": {
+    "type_number": 25,
+    "radius": 1.978
+  },
+  "I": {
+    "type_number": 26,
+    "radius": 2.094
+  },
+  "SE": {
+    "type_number": 27,
+    "radius": 1.9
+  },
+  "MG": {
+    "type_number": 28,
+    "radius": 0.72
+  },
+  "SR": {
+    "type_number": 29,
+    "radius": 1.18
+  },
+  "CU": {
+    "type_number": 30,
+    "radius": 1.18
+  },
+  "MN": {
+    "type_number": 31,
+    "radius": 0.73
+  },
+  "HG": {
+    "type_number": 32,
+    "radius": 1.02
+  },
+  "CD": {
+    "type_number": 33,
+    "radius": 0.95
+  },
+  "NI,": {
+    "type_number": 34,
+    "radius": 0.69
+  },
+  "ZN": {
+    "type_number": 35,
+    "radius": 0.74
+  },
+  "CA": {
+    "type_number": 36,
+    "radius": 1.0
+  },
+  "FE": {
+    "type_number": 37,
+    "radius": 0.61
+  },
+  "CO.OH": {
+    "type_number": 38,
+    "radius": 0.65
+  },
+  "DUMMY": {
+    "type_number": 39,
+    "radius": 2.0
+  }
+}
