@@ -217,7 +217,7 @@ def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, ski
         output_file_suffix = ".txt"
     output_file_path = os.path.join(temp_output_path, f'{ligand_type}_{output_file_suffix}')
     if path_to_ligands is not None:
-        output_file_path = os.path.join(os.path.dirname(output_file_path), f'{'_'.join(os.path.basename(path_to_ligands).split('_')[1:])}_{output_file_suffix}')
+        output_file_path = os.path.join(os.path.dirname(output_file_path), f"{'_'.join(os.path.basename(path_to_ligands).split('_')[1:])}_{output_file_suffix}")
 
     target_preprocessing_data_path = os.path.join(path_to_target, 'preprocessed_target')
     binding_site_grid = np.load(os.path.join(target_preprocessing_data_path, f"ligand_test_dots_{dot_division}.npy"))
