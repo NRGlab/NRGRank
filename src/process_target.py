@@ -8,7 +8,7 @@ import concurrent.futures
 import argparse
 from pathlib import Path
 import traceback
-
+from datetime import date
 
 def load_atoms_mol2(filename, rad_dict):
     coord_start = 0
@@ -43,7 +43,7 @@ def find_cleft_file_simple(target_folder):
     get_cleft_folder = os.path.join(target_folder, "get_cleft")
     if not os.path.exists(get_cleft_folder):
         exit(f'Folder does not exist: {get_cleft_folder}')
-    binding_site_files = sorted([file for file in os.listdir(get_cleft_folder) if file.find('_sph_') != -1 or file.find('bd_site') != -1])
+    binding_site_files = sorted([file for file in os.listdir(get_cleft_folder) if (file.find('_sph_') != -1) or (file.find('bd_site') != -1) and file.find('clf') == -1])
     if len(binding_site_files) > 0:
         return os.path.join(get_cleft_folder, binding_site_files[0])
     else:
@@ -136,6 +136,8 @@ def prepare_preprocess_output(path_to_target, params_dict, original_config_path,
             print(f"(WARNING) Config file already exists and overwrite flag is missing: {config_output}")
             return numpy_output_path
     shutil.copyfile(original_config_path, config_output)
+    with open(config_output, "a") as config_file:
+        config_file.write(f"DATE_PREPARED {date.today().strftime("%d/%m/%Y")}")
     return numpy_output_path
 
 
