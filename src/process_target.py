@@ -260,9 +260,10 @@ def get_clash_for_dot(ligand_atom_coord, target_grid, min_xyz, cell_width, targe
     return clash
 
 
-def preprocess_one_target(target, main_path, params_dict, energy_matrix, time_start, overwrite, verbose=True):
+def preprocess_one_target(target, main_path, params_dict, energy_matrix, time_start, overwrite, verbose=True, deps_folder=None):
     root_software_path = Path(__file__).resolve().parents[1]
-    deps_folder = os.path.join(root_software_path, 'deps')
+    if not deps_folder:
+        deps_folder = os.path.join(root_software_path, 'deps')
     config_file_path = os.path.join(deps_folder, 'config.txt')
     target_path = str(os.path.join(main_path, target))
     receptor_path = os.path.join(target_path, "receptor.mol2")
@@ -333,6 +334,7 @@ def get_args():
                         help='Specify target(s) to analyse. If multiple: separate with comma no space')
     parser.add_argument('-o', '--overwrite', action='store_true',
                         help='specify if you want to overwrite pre existing files')
+    parser.add_argument("-d", '--deps_path', type=str, help='Path to deps')
 
     args = parser.parse_args()
     path_to_targets = os.path.abspath(args.path_to_targets)
@@ -341,20 +343,23 @@ def get_args():
     else:
         target_list = args.specific_target.split(',')
     target_list = sorted(target_list)
-    main(path_to_targets, target_list, overwrite=args.overwrite)
+    deps_path = args.deps_path
+    main(path_to_targets, target_list, overwrite=args.overwrite, deps_path=deps_path)
 
 
-def main(path_to_targets, target_list, overwrite=False):
+def main(path_to_targets, target_list, overwrite=False, deps_path=None):
     root_software_path = Path(__file__).resolve().parents[1]
     os.chdir(root_software_path)
     time_start = timeit.default_timer()
-    config_file_path = os.path.join(root_software_path, 'deps', 'config.txt')
+    if deps_path is None:
+        deps_path = os.path.join('.', 'deps')
+    config_file_path = os.path.join(deps_path, 'config.txt')
     params_dict = get_params_dict(config_file_path)
     use_clash = params_dict["USE_CLASH"]
     if use_clash:
         print('Running in clean mode (ignoring poses with clashes)')
     matrix_name = params_dict['MATRIX_NAME']
-    matrix_path = os.path.join(root_software_path, 'deps', 'matrix', f'{matrix_name}.npy')
+    matrix_path = os.path.join(deps_path, 'matrix', f'{matrix_name}.npy')
     energy_matrix = np.load(matrix_path)
     verbose = True
     if len(target_list) > 1:
@@ -362,21 +367,24 @@ def main(path_to_targets, target_list, overwrite=False):
         print('Preprocessing targets: ', target_list)
     else:
         print('Preprocessing target: ', target_list[0])
-    # preprocess_one_target(target_list[0], path_to_targets, params_dict, energy_matrix, time_start, overwrite, verbose)
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=32) as executor:
-        futures = []
-        for target in target_list:
-            futures.append(
-                executor.submit(preprocess_one_target, target, path_to_targets, params_dict, energy_matrix, time_start,
-                                overwrite, verbose))
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                future.result()
-            except Exception as e:
-                print(f"Error in processing task: {e}")
-                print("Traceback:")
-                traceback.print_exc()
+    if len(target_list) == 1:
+        preprocess_one_target(target_list[0], path_to_targets, params_dict, energy_matrix, time_start, overwrite, verbose, deps_path)
+    else:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=32) as executor:
+            futures = []
+            for target in target_list:
+                futures.append(
+                    executor.submit(preprocess_one_target, target, path_to_targets, params_dict, energy_matrix, time_start,
+                                    overwrite, verbose, deps_path))
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f"Error in processing task: {e}")
+                    print("Traceback:")
+                    traceback.print_exc()
+
 
 if __name__ == "__main__":
     get_args()

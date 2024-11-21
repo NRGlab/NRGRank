@@ -178,14 +178,15 @@ def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf
     return cfs_list
 
 
-def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, skip_info, skip_remark, create_folder=True, custom_deps_path=None):
+def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, skip_info, skip_remark,
+         create_folder=True, deps_folder=None, temp_path=None):
+    if deps_folder is None:
+        deps_folder = os.path.join('.', 'deps')
+    if temp_path is None:
+        temp_path = os.path.join('.', 'temp')
     root_software_path = Path(__file__).resolve().parents[1]
     os.chdir(root_software_path)
-    deps_folder = os.path.join(root_software_path, 'deps')
-    if custom_deps_path:
-        deps_folder = custom_deps_path
     config_file = os.path.join(deps_folder, "config.txt")
-
     time_start = timeit.default_timer()
     verbose = False
     time = False
@@ -197,7 +198,6 @@ def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, ski
     poses_per_molecule = params_dict["POSES_PER_MOLECULE"]
     use_clash = params_dict["USE_CLASH"]
     default_cf = params_dict['DEFAULT_CF']
-    temp_path = os.path.join(root_software_path, 'temp')
     temp_ligand_poses_path = os.path.join(temp_path, 'ligand_poses', target)
     temp_output_path = os.path.join(temp_path, 'results', target)
     if create_folder:
@@ -218,6 +218,8 @@ def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, ski
     output_file_path = os.path.join(temp_output_path, f'{ligand_type}_{output_file_suffix}')
     if path_to_ligands is not None:
         output_file_path = os.path.join(os.path.dirname(output_file_path), f"{'_'.join(os.path.basename(path_to_ligands).split('_')[1:])}_{output_file_suffix}")
+    if skip_info and skip_remark:
+        output_file_path = os.path.splitext(output_file_path)[0] + '.csv'
 
     target_preprocessing_data_path = os.path.join(path_to_target, 'preprocessed_target')
     binding_site_grid = np.load(os.path.join(target_preprocessing_data_path, f"ligand_test_dots_{dot_division}.npy"))
@@ -295,7 +297,7 @@ def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, ski
                         binding_site_grid[int(cfs_list[sorted_indices[pdb_num]][2])])
                 write_pdb(translated_coords, f"{ligand_name_list[i]}_pose_{pdb_num+1}", molec_output_folder,
                            ligand_atoms_names, [f"REMARK CF {cfs_list[sorted_indices[pdb_num]][0]:.2f}\n",
-                                                f"REMARK types: {np.array2string(ligand_atom_types, separator=' ', max_line_width=2000).strip('[]')}\n"])
+                                                f"REMARK atom types: {np.array2string(ligand_atom_types, separator=' ', max_line_width=2000).strip('[]')}\n"])
         if save_time:
             time_list[i] = timeit.default_timer() - time_ligand_start
 
@@ -354,6 +356,9 @@ def get_args():
     parser.add_argument('-sr', '--skip_remark', action='store_true', help='Skips REMARK at start of result file')
     parser.add_argument('-o', '--create_folder', action='store_false', help='Prevents NRGRank from making folders to store output')
 
+    parser.add_argument('-c', '--deps_path', default=None, type=str, help='Custom deps path')
+    parser.add_argument('-t', '--temp_path', default=None, type=str, help='Custom temp path')
+
     args = parser.parse_args()
     path_to_target = args.path_to_target
     category = args.ligand_type
@@ -365,8 +370,12 @@ def get_args():
     skip_info = args.skip_info
     skip_remark = args.skip_remark
     create_folder = args.create_folder
+    # issue with None
+    deps_path = args.deps_path
+    temp_path = args.temp_path
 
-    main(path_to_target, category, ligand_slice, target, path_to_ligands, skip_info, skip_remark, create_folder)
+    main(path_to_target, category, ligand_slice, target, path_to_ligands, skip_info, skip_remark, create_folder,
+         deps_folder=deps_path, temp_path=temp_path)
 
 
 if __name__ == "__main__":
