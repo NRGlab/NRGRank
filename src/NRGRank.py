@@ -282,21 +282,26 @@ def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, ski
         sorted_indices = np.argsort(cfs_list[:, 0])[:poses_per_molecule]
         cfs_list_by_ligand[i] = cfs_list[sorted_indices[0]][0]
         if params_dict["OUTPUT_POSE"]:
-            # TODO: put all conformer poses in 1 folder
             ligand_atoms_names = ligands_atom_names[i][0:ligand_atom_count]
-            if ligand_name_list[i].startswith("*****"):
-                ligand_name_list[i] = "lig_" + ligand_name_list[i].split("_")[-1]
-            molec_output_folder = os.path.join(temp_ligand_poses_path, ligand_name_list[i])
-            if not os.path.isdir(molec_output_folder):
-                os.makedirs(molec_output_folder)
-            for pdb_num in range(0, poses_per_molecule, 1):
-                translated_coords = np.zeros((len(ligand_rotations[int(cfs_list[sorted_indices[pdb_num]][1])]), 3), dtype=np.float32)
-                for atom in range(len(ligand_rotations[int(cfs_list[sorted_indices[pdb_num]][1])])):
+            if params_dict['POSES_PER_MOLECULE'] == 1:
+                molecule_save_folder = temp_ligand_poses_path
+            else:
+                molecule_save_folder = os.path.join(temp_ligand_poses_path, ligand_name_list[i])
+                if not os.path.isdir(molecule_save_folder):
+                    os.makedirs(molecule_save_folder)
+            for pose_number in range(0, poses_per_molecule, 1):
+                translated_coords = np.zeros((len(ligand_rotations[int(cfs_list[sorted_indices[pose_number]][1])]), 3), dtype=np.float32)
+                for atom in range(len(ligand_rotations[int(cfs_list[sorted_indices[pose_number]][1])])):
                     translated_coords[atom] = np.add(
-                        ligand_rotations[int(cfs_list[sorted_indices[pdb_num]][1])][atom],
-                        binding_site_grid[int(cfs_list[sorted_indices[pdb_num]][2])])
-                write_pdb(translated_coords, f"{ligand_name_list[i]}_pose_{pdb_num+1}", molec_output_folder,
-                           ligand_atoms_names, [f"REMARK CF {cfs_list[sorted_indices[pdb_num]][0]:.2f}\n",
+                        ligand_rotations[int(cfs_list[sorted_indices[pose_number]][1])][atom],
+                        binding_site_grid[int(cfs_list[sorted_indices[pose_number]][2])])
+                pose_file_name = ligand_name_list[i]
+                if params_dict['CONFORMERS_PER_MOLECULE'] == 1:
+                    pose_file_name = pose_file_name.rsplit('_', 1)[0]
+                if params_dict['POSES_PER_MOLECULE'] != 1:
+                    pose_file_name += f'_pose_{pose_number+1}'
+                write_pdb(translated_coords, pose_file_name, molecule_save_folder,
+                           ligand_atoms_names, [f"REMARK CF {cfs_list[sorted_indices[pose_number]][0]:.2f}\n",
                                                 f"REMARK atom types: {np.array2string(ligand_atom_types, separator=' ', max_line_width=2000).strip('[]')}\n"])
         if save_time:
             time_list[i] = timeit.default_timer() - time_ligand_start
