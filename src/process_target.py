@@ -80,11 +80,13 @@ def make_binding_site_cuboid(dot_division, a, padding, preprocessed_file_path):
     return x_range, y_range, z_range
 
 
-def build_index_cubes(params, target_atoms_xyz, atoms_radius, preprocessed_file_path, cw_factor=1):
+def build_index_cubes(params, target_atoms_xyz, atoms_radius, preprocessed_file_path, cw_factor=1, custom_cell_width=False):
     water_radius = params['WATER_RADIUS']
     grid_placeholder = -1
     max_rad = np.amax(atoms_radius, axis=0)
     cell_width = 2 * (max_rad + water_radius)
+    if custom_cell_width:
+        cell_width=custom_cell_width
     max_xyz = np.zeros(3)
     max_xyz[0] = np.max(target_atoms_xyz[:, 0]) + cell_width*cw_factor
     max_xyz[1] = np.max(target_atoms_xyz[:, 1]) + cell_width*cw_factor
@@ -282,7 +284,7 @@ def preprocess_one_target(target, main_path, params_dict, energy_matrix, time_st
     binding_site = find_cleft_file_simple(target_path)
     target_atoms_xyz, target_atoms_types, atoms_radius = load_atoms_mol2(receptor_path, rad_dict)
     preprocessed_file_path = prepare_preprocess_output(target_path, params_dict, config_file_path, overwrite)
-    index_cubes, min_xyz, cell_width, max_xyz = build_index_cubes(params_dict, target_atoms_xyz, atoms_radius, preprocessed_file_path)
+    index_cubes, min_xyz, cell_width, max_xyz = build_index_cubes(params_dict, target_atoms_xyz, atoms_radius, preprocessed_file_path, custom_cell_width=params_dict['CELL_WIDTH'])
     binding_site_spheres = load_binding_site_pdb(binding_site)
     binding_site_x_range, binding_site_y_range, binding_site_z_range = make_binding_site_cuboid(clash_grid_distance,
                                                                                                 np.array(binding_site_spheres),

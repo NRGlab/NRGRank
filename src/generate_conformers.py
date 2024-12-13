@@ -21,13 +21,10 @@ def generate_conformers(smiles_line, no_conformers, name_position):
     etkdg.randomSeed = 0xa700f
     etkdg.verbose = False
     etkdg.useRandomCoords = True  # Start with random coordinates
-    split_smiles_line = smiles_line.split()
+    split_smiles_line = smiles_line.split(',')
     smiles = split_smiles_line[0]
     name = split_smiles_line[name_position]
     molecule = Chem.MolFromSmiles(smiles)
-    print('smiles: ', smiles)
-    print('name: ', name)
-
     try:
         frags = Chem.GetMolFrags(molecule, asMols=True, sanitizeFrags=False)
     except:
@@ -63,10 +60,10 @@ def generate_conformers(smiles_line, no_conformers, name_position):
 
 def read_args():
     smiles_path = sys.argv[1]
-    custom_output_folder_path = sys.argv[2]
-    name_column_id = sys.argv[3] # Number of column. Example: if name is in last column arg should be -1. Starts at 0
+    name_column_id = int(sys.argv[2]) # Number of column. Example: if name is in last column arg should be -1. Starts at 0
+    custom_output_folder_path = sys.argv[3] # If None should be False
     optimize = False
-    convert = False
+    convert = True # converts SDF to MOL2 with OpenBabel
     preprocess = False
     main(smiles_path, optimize, custom_output_folder_path, preprocess, convert, name_column_id)
 
