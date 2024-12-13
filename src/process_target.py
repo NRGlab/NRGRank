@@ -87,6 +87,7 @@ def build_index_cubes(params, target_atoms_xyz, atoms_radius, preprocessed_file_
     cell_width = 2 * (max_rad + water_radius)
     if custom_cell_width:
         cell_width=custom_cell_width
+    print(cell_width)
     max_xyz = np.zeros(3)
     max_xyz[0] = np.max(target_atoms_xyz[:, 0]) + cell_width*cw_factor
     max_xyz[1] = np.max(target_atoms_xyz[:, 1]) + cell_width*cw_factor
