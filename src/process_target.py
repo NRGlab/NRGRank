@@ -72,7 +72,7 @@ def make_binding_site_cuboid(dot_division, a, padding, preprocessed_file_path):
         for y_coord in y:
             for z_coord in z:
                 bd_site_box.append([x_coord, y_coord, z_coord])
-    # write_pdb(bd_site_box, f"{os.path.split(target_path)[-1]}_bd_site_box", f'./temp/ligand_poses', None, None)
+    # write_pdb(bd_site_box, f"bd_site_box", './temp/ligand_poses', None, None)
     x_range = np.arange(x[0], x[1], dot_division)
     y_range = np.arange(y[0], y[1], dot_division)
     z_range = np.arange(z[0], z[1], dot_division)
@@ -121,6 +121,19 @@ def build_index_cubes(params, target_atoms_xyz, atoms_radius, preprocessed_file_
                     grid[i][j][k][x] = v
     np.save(os.path.join(preprocessed_file_path, f"index_cube_min_xyz"), min_xyz)
     np.save(os.path.join(preprocessed_file_path, f"index_cube_cell_width"), cell_width)
+    coord_list = []
+    name_list = []
+    for x in np.arange(min_xyz[0], max_xyz[0], cell_width):
+        for y in np.arange(min_xyz[1], max_xyz[1], cell_width):
+            for z in np.arange(min_xyz[2], max_xyz[2], cell_width):
+                coord_list.append([x, y, z])
+                if not name_list:
+                    name_list = ["O"]
+                elif name_list == ["O"]:
+                    name_list.append("N")
+                else:
+                    name_list.append("C")
+    # write_pdb(coord_list, "binding_grid_test", './temp/ligand_poses', name_list, None)
     return grid, min_xyz, cell_width, max_xyz
 
 
@@ -188,7 +201,7 @@ def clean_binding_site_grid(target_grid, binding_site_grid, min_xyz, cell_width,
 
                                     break
     cleaned_binding_site_grid = np.delete(binding_site_grid, index, 0)
-    # write_pdb(cleaned_binding_site_grid, "cleaned grid", f'./temp/ligand_poses/', None, None)
+    # write_pdb(cleaned_binding_site_grid, "cleaned_grid", f'./temp/ligand_poses/', None, None)
     np.save(ligand_test_dot_file_path, cleaned_binding_site_grid)
 
 

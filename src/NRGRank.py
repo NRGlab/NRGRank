@@ -188,7 +188,7 @@ def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, ski
     os.chdir(root_software_path)
     config_file = os.path.join(deps_folder, "config.txt")
     time_start = timeit.default_timer()
-    verbose = False
+    verbose = True
     time = False
     save_time = False
     output_lines = []
@@ -255,6 +255,8 @@ def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, ski
     output_lines.append(f"REMARK Total binding site grid dots: {len(binding_site_grid)}")
     output_lines.append(f"REMARK Total CF evaluations per ligand: {n_cf_evals}")
     output_lines.append(f"REMARK use clash: {params_dict['USE_CLASH']}")
+    output_lines.append(f"REMARK index cube width: {params_dict['CELL_WIDTH']}")
+
     if time:
         output_lines.append(f"REMARK It took {timeit.default_timer() - time_start:.3f} seconds to get setup")
     if verbose:
