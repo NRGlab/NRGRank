@@ -188,7 +188,7 @@ def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, ski
     os.chdir(root_software_path)
     config_file = os.path.join(deps_folder, "config.txt")
     time_start = timeit.default_timer()
-    verbose = True
+    verbose = False
     time = False
     save_time = False
     output_lines = []
