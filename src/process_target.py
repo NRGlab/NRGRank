@@ -152,7 +152,7 @@ def prepare_preprocess_output(path_to_target, params_dict, original_config_path,
             return numpy_output_path
     shutil.copyfile(original_config_path, config_output)
     with open(config_output, "a") as config_file:
-        config_file.write(f"DATE_PREPARED {date.today().strftime("%d/%m/%Y")}")
+        config_file.write(f"DATE_PREPARED {date.today().strftime('%d/%m/%Y')}")
     return numpy_output_path
 
 
