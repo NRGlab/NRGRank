@@ -6,12 +6,14 @@ from itertools import repeat
 import argparse
 from pathlib import Path
 import pickle
+import re
+
 
 def find_ligand_file_in_folder(folder_path):
     ligand_file_list = []
     filenames = next(os.walk(folder_path), (None, None, []))[2]
     for filename in filenames:
-        if filename.endswith("ligands.mol2") or filename.endswith("final.mol2"):
+        if filename.endswith("ligands.mol2") or (filename.find("final") != -1 and filename.find(".mol2") != -1):
             ligand_file_list.append(os.path.join(folder_path, filename))
     return ligand_file_list
 
@@ -117,10 +119,22 @@ def get_suffix(conf_num):
         suffix = f"_{conf_num}_conf"
     return suffix
 
+def get_suffix_search_in_file_name(filepath):
+    pattern = r'(_\d+_conf)'
+    match = re.search(pattern, filepath)
+    return match.group(1)
+
 
 def preprocess_ligands_one_target(ligand_file_path, rad_dict, conf_num, ligand_type='ligand'):
     verbose = False
-    suffix = get_suffix(conf_num)
+    if ligand_file_path.find('_conf') != -1:
+        suffix = get_suffix_search_in_file_name(ligand_file_path)
+    else:
+        suffix = get_suffix(conf_num)
+    if ligand_file_path.find('active') != -1:
+        ligand_type = 'active'
+    if ligand_file_path.find('decoy') != -1:
+        ligand_type = 'decoy'
     target_folder = os.path.dirname(ligand_file_path)
     output_folder = os.path.join(target_folder, f"preprocessed_ligands{suffix}")
     if not os.path.exists(output_folder):
@@ -177,9 +191,9 @@ def main(ligand_file_path=None, ligand_type='ligand', folder_path=None, subdirec
                 ligand_file_list.extend(temp_ligand_file_list)
         else:
             ligand_file_list = find_ligand_file_in_folder(folder_path)
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            executor.map(preprocess_ligands_one_target, ligand_file_list, repeat(rad_dict), repeat(conf_num))
-        # preprocess_ligands_one_target(ligand_file_list[0], rad_dict, conf_num)
+        # with concurrent.futures.ThreadPoolExecutor() as executor:
+        #     executor.map(preprocess_ligands_one_target, ligand_file_list, repeat(rad_dict), repeat(conf_num))
+        preprocess_ligands_one_target(ligand_file_list[0], rad_dict, conf_num)
 
 
 if __name__ == "__main__":

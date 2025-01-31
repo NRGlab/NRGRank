@@ -1,5 +1,8 @@
 import concurrent.futures
 import os
+import sys
+install_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append(install_dir)
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdMolDescriptors, rdForceFieldHelpers, rdDistGeom
 from general_functions import get_params_dict, load_rad_dict
@@ -10,6 +13,7 @@ import subprocess
 from pathlib import Path
 import csv
 import argparse
+
 
 def get_delimiter(file_path, bytes_to_read=4096):
     sniffer = csv.Sniffer()
