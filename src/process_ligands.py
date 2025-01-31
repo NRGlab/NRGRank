@@ -191,9 +191,9 @@ def main(ligand_file_path=None, ligand_type='ligand', folder_path=None, subdirec
                 ligand_file_list.extend(temp_ligand_file_list)
         else:
             ligand_file_list = find_ligand_file_in_folder(folder_path)
-        # with concurrent.futures.ThreadPoolExecutor() as executor:
-        #     executor.map(preprocess_ligands_one_target, ligand_file_list, repeat(rad_dict), repeat(conf_num))
-        preprocess_ligands_one_target(ligand_file_list[0], rad_dict, conf_num)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor.map(preprocess_ligands_one_target, ligand_file_list, repeat(rad_dict), repeat(conf_num))
+        # preprocess_ligands_one_target(ligand_file_list[0], rad_dict, conf_num)
 
 
 if __name__ == "__main__":
