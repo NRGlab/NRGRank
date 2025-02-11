@@ -72,7 +72,7 @@ def make_binding_site_cuboid(dot_division, a, padding, preprocessed_file_path):
         for y_coord in y:
             for z_coord in z:
                 bd_site_box.append([x_coord, y_coord, z_coord])
-    # write_pdb(bd_site_box, f"{os.path.split(target_path)[-1]}_bd_site_box", f'./temp/ligand_poses', None, None)
+    # write_pdb(bd_site_box, f"bd_site_box", './temp/ligand_poses', None, None)
     x_range = np.arange(x[0], x[1], dot_division)
     y_range = np.arange(y[0], y[1], dot_division)
     z_range = np.arange(z[0], z[1], dot_division)
@@ -80,11 +80,13 @@ def make_binding_site_cuboid(dot_division, a, padding, preprocessed_file_path):
     return x_range, y_range, z_range
 
 
-def build_index_cubes(params, target_atoms_xyz, atoms_radius, preprocessed_file_path, cw_factor=1):
+def build_index_cubes(params, target_atoms_xyz, atoms_radius, preprocessed_file_path, cw_factor=1, custom_cell_width=False):
     water_radius = params['WATER_RADIUS']
     grid_placeholder = -1
     max_rad = np.amax(atoms_radius, axis=0)
     cell_width = 2 * (max_rad + water_radius)
+    if custom_cell_width:
+        cell_width=custom_cell_width
     max_xyz = np.zeros(3)
     max_xyz[0] = np.max(target_atoms_xyz[:, 0]) + cell_width*cw_factor
     max_xyz[1] = np.max(target_atoms_xyz[:, 1]) + cell_width*cw_factor
@@ -119,6 +121,19 @@ def build_index_cubes(params, target_atoms_xyz, atoms_radius, preprocessed_file_
                     grid[i][j][k][x] = v
     np.save(os.path.join(preprocessed_file_path, f"index_cube_min_xyz"), min_xyz)
     np.save(os.path.join(preprocessed_file_path, f"index_cube_cell_width"), cell_width)
+    coord_list = []
+    name_list = []
+    for x in np.arange(min_xyz[0], max_xyz[0], cell_width):
+        for y in np.arange(min_xyz[1], max_xyz[1], cell_width):
+            for z in np.arange(min_xyz[2], max_xyz[2], cell_width):
+                coord_list.append([x, y, z])
+                if not name_list:
+                    name_list = ["O"]
+                elif name_list == ["O"]:
+                    name_list.append("N")
+                else:
+                    name_list.append("C")
+    # write_pdb(coord_list, "binding_grid_test", './temp/ligand_poses', name_list, None)
     return grid, min_xyz, cell_width, max_xyz
 
 
@@ -137,7 +152,7 @@ def prepare_preprocess_output(path_to_target, params_dict, original_config_path,
             return numpy_output_path
     shutil.copyfile(original_config_path, config_output)
     with open(config_output, "a") as config_file:
-        config_file.write(f"DATE_PREPARED {date.today().strftime("%d/%m/%Y")}")
+        config_file.write(f"DATE_PREPARED {date.today().strftime('%d/%m/%Y')}")
     return numpy_output_path
 
 
@@ -186,7 +201,7 @@ def clean_binding_site_grid(target_grid, binding_site_grid, min_xyz, cell_width,
 
                                     break
     cleaned_binding_site_grid = np.delete(binding_site_grid, index, 0)
-    # write_pdb(cleaned_binding_site_grid, "cleaned grid", f'./temp/ligand_poses/', None, None)
+    # write_pdb(cleaned_binding_site_grid, "cleaned_grid", f'./temp/ligand_poses/', None, None)
     np.save(ligand_test_dot_file_path, cleaned_binding_site_grid)
 
 
@@ -282,7 +297,7 @@ def preprocess_one_target(target, main_path, params_dict, energy_matrix, time_st
     binding_site = find_cleft_file_simple(target_path)
     target_atoms_xyz, target_atoms_types, atoms_radius = load_atoms_mol2(receptor_path, rad_dict)
     preprocessed_file_path = prepare_preprocess_output(target_path, params_dict, config_file_path, overwrite)
-    index_cubes, min_xyz, cell_width, max_xyz = build_index_cubes(params_dict, target_atoms_xyz, atoms_radius, preprocessed_file_path)
+    index_cubes, min_xyz, cell_width, max_xyz = build_index_cubes(params_dict, target_atoms_xyz, atoms_radius, preprocessed_file_path, custom_cell_width=params_dict['CELL_WIDTH'])
     binding_site_spheres = load_binding_site_pdb(binding_site)
     binding_site_x_range, binding_site_y_range, binding_site_z_range = make_binding_site_cuboid(clash_grid_distance,
                                                                                                 np.array(binding_site_spheres),

@@ -1,6 +1,7 @@
-# Installation
+# Installation (Requires Python version 3.9)
 
-Use the following command in terminal:
+Use the following command in terminal (Mac/Linux):
+
 ```
 git clone https://github.com/NRGlab/NRGRank
 cd NRGRank
@@ -115,6 +116,47 @@ TARGET_FOLDER
 | `-si` | Skips writing the target info file         | N/A                        |
 | `-sr` | Skips writing REMARKS before result        | N/A                        |
 | `-o`  | Prevents NRGRank from creating new folders | N/A                        |
+
+---
+
+# Example
+
+For this example, we will be using a target and ligands from the DUD-E database. 
+    
+1) Download the target file here: <https://dude.docking.org//targets/aa2ar/receptor.pdb>
+2) Convert the downloaded file to mol2 using a software such as **PyMOL** or an online converter such as the one available here: <https://www.cheminfo.org/Chemistry/Cheminformatics/FormatConverter/index.html>
+3) Rename the target file to receptor.mol2
+4) Download and extract the set of known binders here: <https://dude.docking.org//targets/aa2ar/actives_final.mol2.gz>
+5) Make a folder (AA2AR) with the target file using the following structure:
+
+    ```
+    AA2AR
+    ├── actives_final.mol2
+    ├── receptor.mol2
+    ```
+
+6) Generate a binding site using GetCleft (1.75 minimum sphere radii / 3.75 maximum sphere radii). The easiest way is by using the NRGSuite-Qt PyMOL plugin available here: <https://nrg-qt.readthedocs.io/en/latest/>
+7) Place the binding site file in a folder called **get_cleft** to obtain the following folder structure:
+    ```
+    AA2AR
+      ├── get_cleft
+      │   ├── receptor_sph_1.pdb
+      ├── receptor.mol2
+      ├── actives_final.mol2
+    ```
+8) Prepare the target using the following command (replace the path to the parent directory of the target): 
+    ```
+    python src/process_target.py -p /foo/bar/targets -t AA2AR -o
+    ```
+9) Prepare the ligand file
+    ```
+    python src/process_ligands.py -lp /foo/bar/AA2AR/actives_final.mol2
+    ```
+10) Run NRGRank:
+    ```
+    python src/NRGRank.py -p /foo/bar/AA2AR
+    ```
+
 
 
 
