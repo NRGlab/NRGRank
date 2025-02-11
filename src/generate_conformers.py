@@ -26,10 +26,8 @@ def read_column_from_csv(file_path, column_number, delimiter, has_header=True):
     column_values = []
     with open(file_path, mode='r', encoding='utf-8') as file:
         reader = csv.reader(file, delimiter=delimiter)
-
         if has_header:
             next(reader, None)
-
         for row in reader:
             if len(row) > column_number:
                 column_values.append(row[column_number])
@@ -56,15 +54,13 @@ def generate_conformers(molecule_smile, molecule_name, no_conformers, mol_weight
         if frags is None:
             return None
     molecule = max(frags, key=lambda frag: frag.GetNumAtoms())
-    mol_weight = rdMolDescriptors.CalcExactMolWt(molecule)
-    num_heavy_atoms = molecule.GetNumHeavyAtoms()
     if mol_weight_max:
+        mol_weight = rdMolDescriptors.CalcExactMolWt(molecule)
         if mol_weight > mol_weight_max:
-            print(f"Molecular weight for {molecule_name} is over 1800 Da: Ignoring")
             return None
     if heavy_atoms_min:
-         if num_heavy_atoms <= heavy_atoms_min:
-            print(f"{molecule_name} has fewer than 3 heavy atoms: Ignoring")
+        num_heavy_atoms = molecule.GetNumHeavyAtoms()
+        if num_heavy_atoms <= heavy_atoms_min:
             return None
 
     mol = Chem.AddHs(molecule, addCoords=True)
@@ -139,6 +135,20 @@ def read_args():
         dest="preprocess",
         help="Disable preprocessing. Defaults to True.",
     )
+    parser.add_argument(
+        "-mw",
+        "--molecular_weight_max",
+        type=int,
+        default=0,
+        help="Maximum molecular weight. Defaults to 0 which will not filter for MW",
+    )
+    parser.add_argument(
+        "-ha",
+        "--heavy_atoms_min",
+        type=int,
+        default=0,
+        help="Minimum number of heavy atoms. Defaults to 0 which will not filter for this setting",
+    )
 
     args = parser.parse_args()
 
@@ -151,9 +161,11 @@ def read_args():
         optimize=args.optimize,
         convert=args.convert,
         preprocess=args.preprocess,
+        molecular_weight_max=args.molecular_weight_max,
+        heavy_atoms_min=args.heavy_atoms_min
     )
 
-def main(smiles_path, smiles_column_number, name_column_number, output_folder_path, deps_path, optimize, convert, preprocess):
+def main(smiles_path, smiles_column_number, name_column_number, output_folder_path, deps_path, optimize, convert, preprocess, molecular_weight_max, heavy_atoms_min):
     root_software_path = Path(__file__).resolve().parents[1]
     os.chdir(root_software_path)
     if not deps_path:
@@ -164,10 +176,8 @@ def main(smiles_path, smiles_column_number, name_column_number, output_folder_pa
     conf_num = params_dict["CONFORMERS_PER_MOLECULE"]
     if conf_num == 0:
         exit("number of conformers is 0")
-    mol_weight_max = params_dict["MOLECULAR_WEIGHT_MAX"]
-    if mol_weight_max == 0:
-        mol_weight_max = None
-    heavy_atoms_min = params_dict["NUMBER_HEAVY_ATOMS_MIN"]
+    if molecular_weight_max == 0:
+        molecular_weight_max = None
     if heavy_atoms_min ==0:
         heavy_atoms_min = None
 
@@ -189,7 +199,7 @@ def main(smiles_path, smiles_column_number, name_column_number, output_folder_pa
     molecule_name_list = read_column_from_csv(smiles_path, name_column_number, delimiter, has_header=True)
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        for mol in executor.map(generate_conformers,molecule_smiles_list, molecule_name_list, repeat(conf_num), repeat(mol_weight_max), repeat(heavy_atoms_min)):
+        for mol in executor.map(generate_conformers,molecule_smiles_list, molecule_name_list, repeat(conf_num), repeat(molecular_weight_max), repeat(heavy_atoms_min)):
             if mol is not None:
                 for cid in range(mol.GetNumConformers()):
                     if optimize == "yes":
