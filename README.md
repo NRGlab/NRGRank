@@ -1,4 +1,4 @@
-# Installation (Requires Python version 3.9)
+# Installation (Requires at least Python version 3.9 )
 
 Use the following command in terminal (Mac/Linux):
 
