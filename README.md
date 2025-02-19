@@ -154,7 +154,7 @@ For this example, we will be using a target and ligands from the DUD-E database.
     ```
 10) Run NRGRank:
     ```
-    python src/NRGRank.py -p /foo/bar/AA2AR
+    python src/NRGRank.py -p /foo/bar/AA2AR -lt active
     ```
 
 
