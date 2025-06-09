@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from general_functions import get_params_dict, get_radius_number, load_rad_dict
+from NRGRank.general_functions import get_params_dict, get_radius_number, load_rad_dict
 import concurrent.futures
 from itertools import repeat
 import argparse
@@ -119,6 +119,7 @@ def get_suffix(conf_num):
         suffix = f"_{conf_num}_conf"
     return suffix
 
+
 def get_suffix_search_in_file_name(filepath):
     pattern = r'(_\d+_conf)'
     match = re.search(pattern, filepath)
@@ -174,11 +175,9 @@ def get_args():
 def main(ligand_file_path=None, ligand_type='ligand', folder_path=None, subdirectories=None):
     root_software_path = Path(__file__).resolve().parents[1]
     os.chdir(root_software_path)
-    deps_folder = os.path.join(root_software_path, 'deps')
-    config_file = os.path.join(deps_folder, 'config.txt')
-    params_dict = get_params_dict(config_file)
+    params_dict = get_params_dict()
     conf_num = params_dict["CONFORMERS_PER_MOLECULE"]
-    rad_dict = load_rad_dict(os.path.join(deps_folder, 'atom_type_radius.json'))
+    rad_dict = load_rad_dict()
 
     if ligand_file_path:
         preprocess_ligands_one_target(ligand_file_path, rad_dict, conf_num, ligand_type=ligand_type)

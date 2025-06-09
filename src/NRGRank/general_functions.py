@@ -1,12 +1,13 @@
 import os
 import json
+import importlib.resources
 
 
-def get_params_dict(file_path):
+def get_params_dict():
     config = {}
     bool_dict = {"True": True, "False": False}
-
-    with open(file_path, 'r') as file:
+    file_path = importlib.resources.files('NRGRank').joinpath('deps', 'config.txt')
+    with file_path.open('r') as file:
         for line in file:
             if line.startswith("-") == 0:
                 line = line.strip()
@@ -24,6 +25,7 @@ def get_params_dict(file_path):
                             pass
                     config[key] = value
     return config
+
 
 def write_pdb(coord_list, name, path, ligand_names, extra_info):
     if not os.path.isdir(os.path.dirname(path)):
@@ -50,8 +52,10 @@ def write_pdb(coord_list, name, path, ligand_names, extra_info):
         counter += 1
     textfile.close()
 
-def load_rad_dict(filepath):
-    with open(filepath, 'r') as file:
+
+def load_rad_dict():
+    file_path = importlib.resources.files('NRGRank').joinpath('deps', 'atom_type_radius.json')
+    with file_path.open('r') as file:
         loaded_atom_data = json.load(file)
     return loaded_atom_data
 

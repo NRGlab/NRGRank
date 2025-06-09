@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from numba import njit
-from general_functions import get_params_dict, load_rad_dict, get_radius_number, write_pdb
+from NRGRank.general_functions import get_params_dict, load_rad_dict, get_radius_number
 import shutil
 import timeit
 import concurrent.futures
@@ -9,6 +9,8 @@ import argparse
 from pathlib import Path
 import traceback
 from datetime import date
+import importlib.resources
+
 
 def load_atoms_mol2(filename, rad_dict):
     coord_start = 0
@@ -137,7 +139,8 @@ def build_index_cubes(params, target_atoms_xyz, atoms_radius, preprocessed_file_
     return grid, min_xyz, cell_width, max_xyz
 
 
-def prepare_preprocess_output(path_to_target, params_dict, original_config_path, overwrite):
+def prepare_preprocess_output(path_to_target, params_dict, overwrite):
+    original_config_path = importlib.resources.files('NRGRank').joinpath('deps', 'config.txt')
     numpy_output_path = os.path.join(path_to_target, 'preprocessed_target')
     os.makedirs(numpy_output_path, exist_ok=True)
 
@@ -251,6 +254,7 @@ def get_clash_per_dot(x_range, y_range, z_range, target_grid, min_xyz, cell_widt
                 clash_list[a][b][c] = get_clash_for_dot(ligand_atom, target_grid, min_xyz, cell_width, target_atoms_xyz)
     return clash_list
 
+
 @njit
 def get_clash_for_dot(ligand_atom_coord, target_grid, min_xyz, cell_width, target_atoms_xyz):
     # TODO: test if clashes per radius associated to each type is better
@@ -275,11 +279,7 @@ def get_clash_for_dot(ligand_atom_coord, target_grid, min_xyz, cell_width, targe
     return clash
 
 
-def preprocess_one_target(target, main_path, params_dict, energy_matrix, time_start, overwrite, verbose=True, deps_folder=None):
-    root_software_path = Path(__file__).resolve().parents[1]
-    if not deps_folder:
-        deps_folder = os.path.join(root_software_path, 'deps')
-    config_file_path = os.path.join(deps_folder, 'config.txt')
+def preprocess_one_target(target, main_path, params_dict, energy_matrix, time_start, overwrite, verbose=True):
     target_path = str(os.path.join(main_path, target))
     receptor_path = os.path.join(target_path, "receptor.mol2")
     use_clash = params_dict["USE_CLASH"]
@@ -288,7 +288,7 @@ def preprocess_one_target(target, main_path, params_dict, energy_matrix, time_st
 
     # ####################### DEFINE CUBOID AROUND BINDING SITE #######################
 
-    rad_dict = load_rad_dict(os.path.join(deps_folder, "atom_type_radius.json"))
+    rad_dict = load_rad_dict()
     clash_grid_distance = params_dict['CLASH_DOT_DISTANCE']
     bd_site_cuboid_padding = params_dict["BD_SITE_CUBOID_PADDING"]
     dot_division = params_dict['LIGAND_TEST_DOT_SEPARATION']
@@ -296,7 +296,7 @@ def preprocess_one_target(target, main_path, params_dict, energy_matrix, time_st
 
     binding_site = find_cleft_file_simple(target_path)
     target_atoms_xyz, target_atoms_types, atoms_radius = load_atoms_mol2(receptor_path, rad_dict)
-    preprocessed_file_path = prepare_preprocess_output(target_path, params_dict, config_file_path, overwrite)
+    preprocessed_file_path = prepare_preprocess_output(target_path, params_dict, overwrite)
     index_cubes, min_xyz, cell_width, max_xyz = build_index_cubes(params_dict, target_atoms_xyz, atoms_radius, preprocessed_file_path, custom_cell_width=params_dict['CELL_WIDTH'])
     binding_site_spheres = load_binding_site_pdb(binding_site)
     binding_site_x_range, binding_site_y_range, binding_site_z_range = make_binding_site_cuboid(clash_grid_distance,
@@ -349,7 +349,6 @@ def get_args():
                         help='Specify target(s) to analyse. If multiple: separate with comma no space')
     parser.add_argument('-o', '--overwrite', action='store_true',
                         help='specify if you want to overwrite pre existing files')
-    parser.add_argument("-d", '--deps_path', type=str, help='Path to deps')
 
     args = parser.parse_args()
     path_to_targets = os.path.abspath(args.path_to_targets)
@@ -358,23 +357,19 @@ def get_args():
     else:
         target_list = args.specific_target.split(',')
     target_list = sorted(target_list)
-    deps_path = args.deps_path
-    main(path_to_targets, target_list, overwrite=args.overwrite, deps_path=deps_path)
+    main(path_to_targets, target_list, overwrite=args.overwrite)
 
 
-def main(path_to_targets, target_list, overwrite=False, deps_path=None):
+def main(path_to_targets, target_list, overwrite=False):
     root_software_path = Path(__file__).resolve().parents[1]
     os.chdir(root_software_path)
     time_start = timeit.default_timer()
-    if deps_path is None:
-        deps_path = os.path.join('.', 'deps')
-    config_file_path = os.path.join(deps_path, 'config.txt')
-    params_dict = get_params_dict(config_file_path)
+    params_dict = get_params_dict()
     use_clash = params_dict["USE_CLASH"]
     if use_clash:
         print('Running in clean mode (ignoring poses with clashes)')
     matrix_name = params_dict['MATRIX_NAME']
-    matrix_path = os.path.join(deps_path, 'matrix', f'{matrix_name}.npy')
+    matrix_path = importlib.resources.files('NRGRank').joinpath('deps', 'matrix', f'{matrix_name}.npy')
     energy_matrix = np.load(matrix_path)
     verbose = True
     if len(target_list) > 1:
@@ -384,14 +379,14 @@ def main(path_to_targets, target_list, overwrite=False, deps_path=None):
         print('Preprocessing target: ', target_list[0])
 
     if len(target_list) == 1:
-        preprocess_one_target(target_list[0], path_to_targets, params_dict, energy_matrix, time_start, overwrite, verbose, deps_path)
+        preprocess_one_target(target_list[0], path_to_targets, params_dict, energy_matrix, time_start, overwrite, verbose)
     else:
         with concurrent.futures.ProcessPoolExecutor(max_workers=32) as executor:
             futures = []
             for target in target_list:
                 futures.append(
                     executor.submit(preprocess_one_target, target, path_to_targets, params_dict, energy_matrix, time_start,
-                                    overwrite, verbose, deps_path))
+                                    overwrite, verbose))
             for future in concurrent.futures.as_completed(futures):
                 try:
                     future.result()

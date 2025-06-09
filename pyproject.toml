@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+name = "NRGRank"
+description = "A Python based virtual screening software!"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICEN[CS]E"]
+
+requires-python = ">=3.9"
+
+dependencies = [
+  "scipy",
+  "rdkit",
+  "numpy",
+  "numba",
+]
+
+authors = [
+  {name = "Thomas DesCôteaux", email = "thomas.descoteaux@umontreal.ca"},
+  {name = "Rafael Najmanovich", email = "rafael.najmanovich@umontreal.ca"},
+]
+maintainers = [
+  {name = "Thomas DesCôteaux", email = "thomas.descoteaux@umontreal.ca"}
+]
+
+[project.urls]
+Repository = "https://github.com/NRGlab/NRGRank"
+
+[tool.setuptools.package-data]
+my_package = ["deps/*"]

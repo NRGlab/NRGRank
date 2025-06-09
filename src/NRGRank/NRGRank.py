@@ -179,20 +179,17 @@ def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf
 
 
 def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, skip_info, skip_remark,
-         create_folder=True, deps_folder=None, temp_path=None):
-    if deps_folder is None:
-        deps_folder = os.path.join('.', 'deps')
+         create_folder=True, temp_path=None):
     if temp_path is None:
         temp_path = os.path.join('.', 'temp')
     root_software_path = Path(__file__).resolve().parents[1]
     os.chdir(root_software_path)
-    config_file = os.path.join(deps_folder, "config.txt")
     time_start = timeit.default_timer()
     verbose = False
     time = False
     save_time = False
     output_lines = []
-    params_dict = get_params_dict(config_file)
+    params_dict = get_params_dict()
     dot_division = params_dict['LIGAND_TEST_DOT_SEPARATION']
     conf_num = params_dict['CONFORMERS_PER_MOLECULE']
     poses_per_molecule = params_dict["POSES_PER_MOLECULE"]
@@ -362,8 +359,6 @@ def get_args():
     parser.add_argument('-si', '--skip_info', action='store_true', help='Skips writing a target info file')
     parser.add_argument('-sr', '--skip_remark', action='store_true', help='Skips REMARK at start of result file')
     parser.add_argument('-o', '--create_folder', action='store_false', help='Prevents NRGRank from making folders to store output')
-
-    parser.add_argument('-c', '--deps_path', default=None, type=str, help='Custom deps path')
     parser.add_argument('-t', '--temp_path', default=None, type=str, help='Custom temp path')
 
     args = parser.parse_args()
@@ -377,12 +372,10 @@ def get_args():
     skip_info = args.skip_info
     skip_remark = args.skip_remark
     create_folder = args.create_folder
-    # issue with None
-    deps_path = args.deps_path
     temp_path = args.temp_path
 
     main(path_to_target, category, ligand_slice, target, path_to_ligands, skip_info, skip_remark, create_folder,
-         deps_folder=deps_path, temp_path=temp_path)
+         temp_path=temp_path)
 
 
 if __name__ == "__main__":

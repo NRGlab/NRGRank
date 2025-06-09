@@ -1,11 +1,8 @@
 import concurrent.futures
 import os
-import sys
-install_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(install_dir)
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdMolDescriptors, rdForceFieldHelpers, rdDistGeom
-from general_functions import get_params_dict, load_rad_dict
+from NRGRank.general_functions import get_params_dict, load_rad_dict
 from itertools import repeat
 from datetime import datetime
 from process_ligands import preprocess_ligands_one_target
@@ -110,13 +107,6 @@ def read_args():
         help="Path to the custom output folder. Use 'None' if not specified.",
     )
     parser.add_argument(
-        "-d",
-        "--deps_path",
-        type=str,
-        default=None,
-        help="Path to custom dependencies. Optional.",
-    )
-    parser.add_argument(
         "--optimize",
         action="store_true",
         help="Enable optimization. Defaults to False.",
@@ -157,7 +147,6 @@ def read_args():
         smiles_column_number=args.smiles_column_number,
         name_column_number=args.name_column_number,
         output_folder_path=args.output_folder_path,
-        deps_path=args.deps_path,
         optimize=args.optimize,
         convert=args.convert,
         preprocess=args.preprocess,
@@ -165,14 +154,13 @@ def read_args():
         heavy_atoms_min=args.heavy_atoms_min
     )
 
-def main(smiles_path, smiles_column_number, name_column_number, output_folder_path, deps_path, optimize, convert, preprocess, molecular_weight_max, heavy_atoms_min):
+
+def main(smiles_path, smiles_column_number, name_column_number, output_folder_path, optimize, convert,
+         preprocess, molecular_weight_max, heavy_atoms_min):
     root_software_path = Path(__file__).resolve().parents[1]
     os.chdir(root_software_path)
-    if not deps_path:
-        deps_path = os.path.join(root_software_path, 'deps')
-    config_path = os.path.join(deps_path, "config.txt")
 
-    params_dict = get_params_dict(config_path)
+    params_dict = get_params_dict()
     conf_num = params_dict["CONFORMERS_PER_MOLECULE"]
     if conf_num == 0:
         exit("number of conformers is 0")
@@ -199,7 +187,7 @@ def main(smiles_path, smiles_column_number, name_column_number, output_folder_pa
     molecule_name_list = read_column_from_csv(smiles_path, name_column_number, delimiter, has_header=True)
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        for mol in executor.map(generate_conformers,molecule_smiles_list, molecule_name_list, repeat(conf_num), repeat(molecular_weight_max), repeat(heavy_atoms_min)):
+        for mol in executor.map(generate_conformers, molecule_smiles_list, molecule_name_list, repeat(conf_num), repeat(molecular_weight_max), repeat(heavy_atoms_min)):
             if mol is not None:
                 for cid in range(mol.GetNumConformers()):
                     if optimize == "yes":
@@ -217,8 +205,7 @@ def main(smiles_path, smiles_column_number, name_column_number, output_folder_pa
         os.remove(sdf_output_file)
 
     if preprocess:
-        rad_dict_path = os.path.join(deps_path, "atom_type_radius.json")
-        rad_dict = load_rad_dict(rad_dict_path)
+        rad_dict = load_rad_dict()
         preprocess_ligands_one_target(mol2_output_file, rad_dict, conf_num)
 
 
