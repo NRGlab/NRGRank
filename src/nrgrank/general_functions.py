@@ -3,30 +3,6 @@ import json
 import importlib.resources
 
 
-def get_params_dict():
-    config = {}
-    bool_dict = {"True": True, "False": False}
-    file_path = importlib.resources.files('NRGRank').joinpath('deps', 'config.txt')
-    with file_path.open('r') as file:
-        for line in file:
-            if line.startswith("-") == 0:
-                line = line.strip()
-                if line:
-                    key, value = line.split()
-                    if value in bool_dict:
-                        value = bool_dict[value]
-                    else:
-                        try:
-                            if '.' in value:
-                                value = float(value)
-                            else:
-                                value = int(value)
-                        except ValueError:
-                            pass
-                    config[key] = value
-    return config
-
-
 def write_pdb(coord_list, name, path, ligand_names, extra_info):
     if not os.path.isdir(os.path.dirname(path)):
         os.mkdir(os.path.dirname(path))
@@ -54,7 +30,7 @@ def write_pdb(coord_list, name, path, ligand_names, extra_info):
 
 
 def load_rad_dict():
-    file_path = importlib.resources.files('NRGRank').joinpath('deps', 'atom_type_radius.json')
+    file_path = importlib.resources.files('nrgrank').joinpath('deps', 'atom_type_radius.json')
     with file_path.open('r') as file:
         loaded_atom_data = json.load(file)
     return loaded_atom_data

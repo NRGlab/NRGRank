@@ -2,10 +2,9 @@ import concurrent.futures
 import os
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdMolDescriptors, rdForceFieldHelpers, rdDistGeom
-from NRGRank.general_functions import get_params_dict, load_rad_dict
 from itertools import repeat
 from datetime import datetime
-from process_ligands import preprocess_ligands_one_target
+from nrgrank import process_ligands
 import subprocess
 from pathlib import Path
 import csv
@@ -41,7 +40,7 @@ def generate_conformers(molecule_smile, molecule_name, no_conformers, mol_weight
     # https://greglandrum.github.io/rdkit-blog/posts/2023-03-02-clustering-conformers.html
     etkdg.randomSeed = 0xa700f
     etkdg.verbose = False
-    etkdg.useRandomCoords = True  # Start with random coordinates
+    etkdg.useRandomCoords = True
     molecule = Chem.MolFromSmiles(molecule_smile)
     try:
         frags = Chem.GetMolFrags(molecule, asMols=True, sanitizeFrags=False)
@@ -155,29 +154,25 @@ def read_args():
     )
 
 
-def main(smiles_path, smiles_column_number, name_column_number, output_folder_path, optimize, convert,
-         preprocess, molecular_weight_max, heavy_atoms_min):
+def main(smiles_path, smiles_column_number, name_column_number, output_folder_path, conformers_per_molecule=1, optimize=False, convert=True,
+         preprocess=False, molecular_weight_max=None, heavy_atoms_min=None):
     root_software_path = Path(__file__).resolve().parents[1]
     os.chdir(root_software_path)
 
-    params_dict = get_params_dict()
-    conf_num = params_dict["CONFORMERS_PER_MOLECULE"]
-    if conf_num == 0:
-        exit("number of conformers is 0")
-    if molecular_weight_max == 0:
-        molecular_weight_max = None
-    if heavy_atoms_min ==0:
-        heavy_atoms_min = None
+    if conformers_per_molecule <= 0:
+        exit("Number of conformers must be greater than 0.")
 
     if not output_folder_path:
         output_folder_path = os.path.join(os.path.dirname(smiles_path), f"{os.path.basename(smiles_path).split('.')[0]}_conformers")
     if not os.path.isdir(output_folder_path):
         os.mkdir(output_folder_path)
 
-    end = ""
-    if optimize == "yes":
-        end = "_optimized"
-    sdf_output_file = os.path.join(output_folder_path, f"{os.path.splitext(os.path.basename(smiles_path))[0]}_{conf_num}_conf{end}.sdf")
+    sdf_output_file = os.path.join(output_folder_path, f"{os.path.splitext(os.path.basename(smiles_path))[0]}")
+    if conformers_per_molecule > 1:
+        sdf_output_file += f"_{conformers_per_molecule}_conf"
+    if optimize:
+        sdf_output_file += "_optimized"
+    sdf_output_file += '.sdf'
     mol2_output_file = os.path.splitext(sdf_output_file)[0] + '.mol2'
 
     writer = AllChem.SDWriter(sdf_output_file)
@@ -187,10 +182,11 @@ def main(smiles_path, smiles_column_number, name_column_number, output_folder_pa
     molecule_name_list = read_column_from_csv(smiles_path, name_column_number, delimiter, has_header=True)
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        for mol in executor.map(generate_conformers, molecule_smiles_list, molecule_name_list, repeat(conf_num), repeat(molecular_weight_max), repeat(heavy_atoms_min)):
+        for mol in executor.map(generate_conformers, molecule_smiles_list, molecule_name_list,
+                                repeat(conformers_per_molecule), repeat(molecular_weight_max), repeat(heavy_atoms_min)):
             if mol is not None:
                 for cid in range(mol.GetNumConformers()):
-                    if optimize == "yes":
+                    if optimize:
                         Chem.rdForceFieldHelpers.MMFFOptimizeMoleculeConfs(mol, cid)
                     mol = Chem.RemoveHs(mol)
                     writer.write(mol, cid)
@@ -205,8 +201,7 @@ def main(smiles_path, smiles_column_number, name_column_number, output_folder_pa
         os.remove(sdf_output_file)
 
     if preprocess:
-        rad_dict = load_rad_dict()
-        preprocess_ligands_one_target(mol2_output_file, rad_dict, conf_num)
+        process_ligands(ligand_path=mol2_output_file)
 
 
 if __name__ == '__main__':
