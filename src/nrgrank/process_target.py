@@ -375,7 +375,7 @@ def main(target_mol2_path, binding_site_file_path, create_new_dir=True, overwrit
     energy_matrix = np.load(matrix_path)
     verbose = True
 
-    if not type(target_mol2_path) is str or type(binding_site_file_path) is str:
+    if not type(target_mol2_path) is str or type(binding_site_file_path) is not str:
         exit('target_file and binding_site_file_path must be strings')
 
     if not os.path.isfile(target_mol2_path):
