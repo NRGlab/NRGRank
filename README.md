@@ -52,7 +52,7 @@ All ligands for one screen must be in the same mol2 file
    | Flag           | Description                                                                          | Possible value(s) |
    |----------------|--------------------------------------------------------------------------------------|-------------------|
    | `overwrite`    | Allows overwriting existing files                                                    | True,False        |
-   | `ligand_type`  | Assign a specific ligand type recognised by NRGRank. Can be useful for benchmarking. | Str               |    
+   | `ligand_type`  | Assign a specific ligand type recognised by NRGRank. Can be useful for benchmarking. | (str)             |    
    | `output_dir`   | Folder where generated files will be stored                                          | Absolute path     |
    
    ### Example commands:
@@ -68,19 +68,19 @@ All ligands for one screen must be in the same mol2 file
     
 | Flag                       | Description                                                                     | Possible value(s) |
 |----------------------------|---------------------------------------------------------------------------------|-------------------|
-| `target_name`              | Target name that is used to name the output file                                | str               |
+| `target_name`              | Target name that is used to name the output file                                | (str)             |
 | `preprocessed_target_path` | Path to preprocessed_target folder (can be path returned from process_target)   | Absolute path     |
 | `preprocessed_ligand_path` | Path to preprocessed_ligands folder (can be path returned from process_ligands) | Absolute path     |
 | `result_folder_path`       | Path to folder where result file will be written                                | Absolute path     |
 
 ### Optional Flags
     
-| Flag             | Description                                                                        | Possible value(s)     |
-|------------------|------------------------------------------------------------------------------------|-----------------------|
-| `ligand_type`    | Type of ligand. Useful when benchmarking with DUD-E                                | (active,decoy,ligand) |
-| `ligand_slice`   | List of 2 numbers containing the index of the first and last ligand to be screened | list                  |
-| `write_info`     | Write a .txt file containing information about the run                             | True,False            |
-| `unique_run_id`  | Adds a unique id to the output                                                     | str,int               |
+| Flag             | Description                                                                        | Possible value(s)   |
+|------------------|------------------------------------------------------------------------------------|---------------------|
+| `ligand_type`    | Type of ligand. Useful when benchmarking with DUD-E                                | active,decoy,ligand |
+| `ligand_slice`   | List of 2 numbers containing the index of the first and last ligand to be screened | (list)              |
+| `write_info`     | Write a .txt file containing information about the run                             | True,False          |
+| `unique_run_id`  | Adds a unique id to the output                                                     | (str,int)           |
 
 ### Example commands:
 
