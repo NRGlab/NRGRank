@@ -88,7 +88,3 @@ All ligands for one screen must be in the same mol2 file
    ```
 
 ---
-
-
-
-
