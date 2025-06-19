@@ -226,16 +226,15 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
     output_file_path = os.path.join(result_folder_path, f'{output_file_name}.csv')
     counter = 2
     while os.path.isfile(output_file_path):
-        output_file_path = os.path.join(result_folder_path, f'{output_file_name}_{counter}.csv')
+        output_file_path = os.path.join(result_folder_path, f'{output_file_name}_({counter}).csv')
         counter += 1
 
-    target_preprocessing_data_path = os.path.join(preprocessed_target_path, 'preprocessed_target')
-    binding_site_grid = np.load(os.path.join(target_preprocessing_data_path, f"ligand_test_dots_{test_dot_separation}.npy"))
-    precalculated_cf_list = np.load(os.path.join(target_preprocessing_data_path, f"cf_list.npy"))
+    binding_site_grid = np.load(os.path.join(preprocessed_target_path, f"ligand_test_dots_{test_dot_separation}.npy"))
+    precalculated_cf_list = np.load(os.path.join(preprocessed_target_path, f"cf_list.npy"))
 
     if use_clash:
-        load_range_list = np.load(os.path.join(target_preprocessing_data_path, "bd_site_cuboid_coord_range_array.npy"))
-        clash_list = np.load(os.path.join(target_preprocessing_data_path, f"clash_list_{clash_dot_distance}.npy"))
+        load_range_list = np.load(os.path.join(preprocessed_target_path, "bd_site_cuboid_coord_range_array.npy"))
+        clash_list = np.load(os.path.join(preprocessed_target_path, f"clash_list_{clash_dot_distance}.npy"))
         clash_list_size = clash_list.shape
     else:
         load_range_list = None
@@ -251,7 +250,7 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
     if save_time:
         time_list = np.zeros(molecule_count_array, dtype=np.float32)
 
-    cell_width = np.load(os.path.join(target_preprocessing_data_path, 'index_cube_cell_width.npy'))
+    cell_width = np.load(os.path.join(preprocessed_target_path, 'index_cube_cell_width.npy'))
     cf_size_list = np.array([np.size(precalculated_cf_list, axis=0), np.size(precalculated_cf_list, axis=1), np.size(precalculated_cf_list, axis=2)])
 
     info_lines.append(f"REMARK target folder: {preprocessed_target_path}")
@@ -268,7 +267,7 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
 
     if params_dict['VERBOSE']:
         print("\n".join(info_lines))
-    min_xyz = np.load(os.path.join(target_preprocessing_data_path, 'index_cube_min_xyz.npy'))
+    min_xyz = np.load(os.path.join(preprocessed_target_path, 'index_cube_min_xyz.npy'))
 
     for i, molecule in enumerate(atoms_per_molecule_array):
         time_molecule_start = timeit.default_timer()
@@ -351,6 +350,7 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         f.write("\n")
     if params_dict['VERBOSE']:
         print("\n".join(output_lines))
+    return output_file_path
 
 
 def get_args():

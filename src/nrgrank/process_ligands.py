@@ -131,7 +131,7 @@ def get_args():
     main(ligand_path=ligand_file_path, ligand_type=ligand_type, conformers_per_molecule=conformers_per_molecule, output_dir=output_dir)
 
 
-def main(ligand_path, conformers_per_molecule, ligand_type='ligand', output_dir=None):
+def main(ligand_path, conformers_per_molecule, overwrite=False, ligand_type='ligand', output_dir=None):
     if os.path.isfile(ligand_path):
         if ligand_path.find('_conf') != -1:
             suffix = get_suffix_search_in_file_name(ligand_path)
@@ -142,7 +142,11 @@ def main(ligand_path, conformers_per_molecule, ligand_type='ligand', output_dir=
         output_folder = os.path.join(output_dir, f"preprocessed_ligands{suffix}")
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
-        load_atoms_mol2(ligand_path, output_folder, ligand_type=ligand_type)
+        elif os.listdir(output_folder) and not overwrite:
+            print(f'{output_folder} is not empty... Skipping. \nUse overwrite=True to overwrite.')
+        else:
+            load_atoms_mol2(ligand_path, output_folder, ligand_type=ligand_type)
+        return output_folder
     else:
         exit(f'Argument used for ligand_path is not a file: {ligand_path}')
 

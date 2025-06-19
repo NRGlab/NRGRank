@@ -255,7 +255,7 @@ def get_clash_for_dot(ligand_atom_coord, target_grid, min_xyz, cell_width, targe
 
 
 def preprocess_one_target(target_file_path, binding_site_file_path, params_dict, energy_matrix, time_start, overwrite,
-                          verbose=True, create_new_dir=True):
+                          verbose=False, create_new_dir=True):
     use_clash = params_dict["USE_CLASH"]
     clash_dot_distance = params_dict['CLASH_DOT_DISTANCE']
     bd_site_cuboid_padding = params_dict["BD_SITE_CUBOID_PADDING"]
@@ -313,7 +313,7 @@ def preprocess_one_target(target_file_path, binding_site_file_path, params_dict,
         cfs_list = get_cf_list(index_cubes, atom_type_range, target_atoms_types, energy_matrix, number_of_atom_types)
         np.save(cf_array_path, cfs_list)
     else:
-        print(f"CF already precalculated. Use -o flag if you wish to overwrite.")
+        print(f"Energies already precalculated... Skipping. \nUse -o flag if you wish to overwrite.")
 
     # ####################### GENERATE AND CLEAN LIGAND TEST DOTS #######################
 
@@ -323,7 +323,8 @@ def preprocess_one_target(target_file_path, binding_site_file_path, params_dict,
         clean_binding_site_grid(index_cubes, original_grid, min_xyz, cell_width, target_atoms_xyz,
                                 ligand_test_dot_file_path)
     else:
-        print(f"The file for binding site dots at {test_dot_separation} A distance already exists")
+        if verbose:
+            print(f"The file for binding site dots at {test_dot_separation} A distance already exists")
     if verbose:
         total_run_time = timeit.default_timer() - time_start
         if total_run_time > 60.0:
@@ -331,7 +332,7 @@ def preprocess_one_target(target_file_path, binding_site_file_path, params_dict,
             print(f"{target}: {total_run_time} minutes to run")
         else:
             print(f"{target}: {total_run_time:.2f} seconds to run")
-    return target_save_dir
+    return preprocessed_target_folder_path
 
 
 def get_args():
@@ -362,18 +363,19 @@ def main(target_mol2_path, binding_site_file_path, create_new_dir=True, overwrit
         'BD_SITE_CUBOID_PADDING': 2,
         'LIGAND_TEST_DOT_SEPARATION': 1.5,
         'USE_CLASH': True,
-        'CELL_WIDTH': 6.56
+        'CELL_WIDTH': 6.56,
+        'VERBOSE': False
     }
     params_dict = params_dict_default.copy()
     params_dict.update(user_config)
     use_clash = params_dict['USE_CLASH']
     matrix_name = params_dict['MATRIX_NAME']
-    if use_clash:
-        print('Running in clean mode (ignoring poses with clashes)')
+    verbose = params_dict['VERBOSE']
+    if not use_clash:
+        print('Considering poses with clashes')
 
     matrix_path = importlib.resources.files('nrgrank').joinpath('deps', 'matrix', f'{matrix_name}.npy')
     energy_matrix = np.load(matrix_path)
-    verbose = True
 
     if not type(target_mol2_path) is str or type(binding_site_file_path) is not str:
         exit('target_file and binding_site_file_path must be strings')

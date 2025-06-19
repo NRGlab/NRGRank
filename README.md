@@ -5,14 +5,15 @@ Use the following command:
 ```
 pip install nrgrank
 ```
+Using NRGRank in a python script:
 
+```
+from nrgrank import process_target, process_ligands, nrgrank_main
+```
 
 # Preparatory steps
 
-```
-from nrgrank import process_target, process_ligand, nrgrank_main
-```
-## Preprocessing the target
+## 1. Preprocessing the target
 
 ### Required Arguments
 | Argument                 | Description                                     | Possible value(s) |
@@ -32,7 +33,7 @@ from nrgrank import process_target, process_ligand, nrgrank_main
 target_save_dir = process_target(target_mol2_path='foo/bar/target.mol2', binding_site_file_path='foo/bar/bd_site_sph_1.pdb')
 ```
 
-## Preparing the ligands
+## 2. Preparing the ligands
    
 All ligands for one screen must be in the same mol2 file
       
@@ -48,32 +49,35 @@ All ligands for one screen must be in the same mol2 file
    
    ### Optional Arguments
 
-   | Flag          | Description                                                                          | Possible value(s) |
-   |---------------|--------------------------------------------------------------------------------------|-------------------|
-   | `ligand_type` | Assign a specific ligand type recognised by NRGRank. Can be useful for benchmarking. | Str               |
-   | `output_dir`  | Folder where generated files will be stored                                          | Absolute path     |
+   | Flag           | Description                                                                          | Possible value(s) |
+   |----------------|--------------------------------------------------------------------------------------|-------------------|
+   | `overwrite`    | Allows overwriting existing files                                                    | True,False        |
+   | `ligand_type`  | Assign a specific ligand type recognised by NRGRank. Can be useful for benchmarking. | Str               |    
+   | `output_dir`   | Folder where generated files will be stored                                          | Absolute path     |
    
    ### Example commands:
 
    ```
-   process_ligand(ligand_path='foo/bar/ligands.mol2', conformers_per_molecule=1)
+   ligand_save_dir = process_ligands(ligand_path='foo/bar/ligands.mol2', conformers_per_molecule=1)
    ```
+
+---
 # NRGRank
 
 ### Required Flags
     
-| Flag                       | Description                                      | Possible value(s) |
-|----------------------------|--------------------------------------------------|-------------------|
-| `target_name`              | Target name that is used to name the output file | str               |
-| `preprocessed_target_path` | Path to preprocessed_target folder               | Absolute path     |
-| `preprocessed_ligand_path` | Path to preprocessed_ligands folder              | Absolute path     |
-| `result_folder_path`       | Path to folder where result file will be written | Absolute path     |
+| Flag                       | Description                                                                     | Possible value(s) |
+|----------------------------|---------------------------------------------------------------------------------|-------------------|
+| `target_name`              | Target name that is used to name the output file                                | str               |
+| `preprocessed_target_path` | Path to preprocessed_target folder (can be path returned from process_target)   | Absolute path     |
+| `preprocessed_ligand_path` | Path to preprocessed_ligands folder (can be path returned from process_ligands) | Absolute path     |
+| `result_folder_path`       | Path to folder where result file will be written                                | Absolute path     |
 
 ### Optional Flags
     
 | Flag             | Description                                                                        | Possible value(s)     |
 |------------------|------------------------------------------------------------------------------------|-----------------------|
-| `ligand_type`    | Type of ligand. Usefull when benchmarking with DUD-E                               | (active,decoy,ligand) |
+| `ligand_type`    | Type of ligand. Useful when benchmarking with DUD-E                                | (active,decoy,ligand) |
 | `ligand_slice`   | List of 2 numbers containing the index of the first and last ligand to be screened | list                  |
 | `write_info`     | Write a .txt file containing information about the run                             | True,False            |
 | `unique_run_id`  | Adds a unique id to the output                                                     | str,int               |
@@ -81,10 +85,10 @@ All ligands for one screen must be in the same mol2 file
 ### Example commands:
 
    ```
-   nrgrank_main(target_name='target', 
-                preprocessed_target_path='foo/bar/preprocessed_target', 
-                preprocessed_ligand_path='foo/bar/preprocessed_ligands_1_conf',
-                result_folder_path='foo/bar/results')
+   result_file_path = nrgrank_main(target_name='target', 
+                      preprocessed_target_path='foo/bar/preprocessed_target', 
+                      preprocessed_ligand_path='foo/bar/preprocessed_ligands_1_conf',
+                      result_folder_path='foo/bar/results')
    ```
 
----
+Returns the path to the result file
