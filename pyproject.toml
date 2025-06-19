@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 dynamic = ["version"]
-name = "NRGRank"
+name = "nrgrank"
 description = "A Python based virtual screening software!"
 readme = "README.md"
 license = "GPL-3.0-or-later"
