@@ -1,24 +1,12 @@
 import os
 import numpy as np
-from general_functions import get_params_dict, get_radius_number, load_rad_dict
-import concurrent.futures
-from itertools import repeat
+from nrgrank.general_functions import get_radius_number, load_rad_dict
 import argparse
-from pathlib import Path
 import pickle
 import re
 
 
-def find_ligand_file_in_folder(folder_path):
-    ligand_file_list = []
-    filenames = next(os.walk(folder_path), (None, None, []))[2]
-    for filename in filenames:
-        if filename.endswith("ligands.mol2") or (filename.find("final") != -1 and filename.find(".mol2") != -1):
-            ligand_file_list.append(os.path.join(folder_path, filename))
-    return ligand_file_list
-
-
-def load_atoms_mol2(filename, rad_dict, save_path, ligand_type='ligand'):
+def load_atoms_mol2(filename, save_path, ligand_type='ligand'):
     coord_start = 0
     max_atoms = 0
     n_atoms = 0
@@ -26,6 +14,7 @@ def load_atoms_mol2(filename, rad_dict, save_path, ligand_type='ligand'):
     n_unique_molecules = 0
     same_molec_counter = 1
     molecule_name_list = []
+    rad_dict = load_rad_dict()
     with open(filename) as f:
         lines = f.readlines()
 
@@ -41,7 +30,7 @@ def load_atoms_mol2(filename, rad_dict, save_path, ligand_type='ligand'):
                 else:
                     same_molec_counter = 1
                 molecule_name_list.append(lines[counter+1][0:-1] + molec_suffix)
-                if molec_suffix =="_0":
+                if molec_suffix == "_0":
                     n_unique_molecules += 1
             else:
                 exit("Error when reading molecule name")
@@ -119,81 +108,47 @@ def get_suffix(conf_num):
         suffix = f"_{conf_num}_conf"
     return suffix
 
+
 def get_suffix_search_in_file_name(filepath):
     pattern = r'(_\d+_conf)'
     match = re.search(pattern, filepath)
     return match.group(1)
 
 
-def preprocess_ligands_one_target(ligand_file_path, rad_dict, conf_num, ligand_type='ligand'):
-    verbose = False
-    if ligand_file_path.find('_conf') != -1:
-        suffix = get_suffix_search_in_file_name(ligand_file_path)
-    else:
-        suffix = get_suffix(conf_num)
-    if ligand_file_path.find('active') != -1:
-        ligand_type = 'active'
-    if ligand_file_path.find('decoy') != -1:
-        ligand_type = 'decoy'
-    target_folder = os.path.dirname(ligand_file_path)
-    output_folder = os.path.join(target_folder, f"preprocessed_ligands{suffix}")
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-    load_atoms_mol2(ligand_file_path, rad_dict, output_folder, ligand_type=ligand_type)
-    if verbose:
-        print("Files saved to: ", output_folder)
-
-
 def get_args():
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-lp", '--ligand_path', type=str, help='Path to folder containing ligand folders')
-    group.add_argument("-fp", '--folder_path', type=str, help='Path to folder containing ligand files')
-    parser.add_argument("-lt", '--ligand_type', type=str, help='Ligand type (not required)')
-    parser.add_argument("-sd", '--subdirectories', action='store_true',
-                        help="Include subdirectories if target path is specified")
+    group.add_argument("-l", '--ligand_path', type=str, help='Path to folder containing ligand folders')
+    parser.add_argument("-t", '--ligand_type', type=str, help='Ligand type (not required)')
+    parser.add_argument("-c", '--conformers_per_molecule', type=int, help='Number of conformers per molecule')
+    parser.add_argument("-o", '--output_dir', type=str, help='Output directory')
 
     args = parser.parse_args()
-    if args.ligand_path and args.subdirectories:
-        parser.error(
-            "Argument -sd (subdirectories) can only be used with -tp (target path), not with -lp (ligand path).")
-    if args.ligand_type and args.folder_path:
-        parser.error(
-            "Argument -lt (ligand type) can only be used with -lp (ligand path), not with -fp (folder path).")
-
-    if args.folder_path:
-        folder_path = args.folder_path
-        subdirectories = args.subdirectories
-        main(folder_path=folder_path, subdirectories=subdirectories)
-    elif args.ligand_path:
-        ligand_file_path = args.ligand_path
-        ligand_type = args.ligand_type
-        main(ligand_file_path=ligand_file_path, ligand_type=ligand_type)
+    ligand_file_path = args.ligand_path
+    ligand_type = args.ligand_type
+    conformers_per_molecule = args.conformers_per_molecule
+    output_dir = args.output_dir
+    main(ligand_path=ligand_file_path, ligand_type=ligand_type, conformers_per_molecule=conformers_per_molecule, output_dir=output_dir)
 
 
-def main(ligand_file_path=None, ligand_type='ligand', folder_path=None, subdirectories=None):
-    root_software_path = Path(__file__).resolve().parents[1]
-    os.chdir(root_software_path)
-    deps_folder = os.path.join(root_software_path, 'deps')
-    config_file = os.path.join(deps_folder, 'config.txt')
-    params_dict = get_params_dict(config_file)
-    conf_num = params_dict["CONFORMERS_PER_MOLECULE"]
-    rad_dict = load_rad_dict(os.path.join(deps_folder, 'atom_type_radius.json'))
-
-    if ligand_file_path:
-        preprocess_ligands_one_target(ligand_file_path, rad_dict, conf_num, ligand_type=ligand_type)
-    elif folder_path:
-        if subdirectories:
-            ligand_file_list = []
-            folders = next(os.walk(folder_path))[1]
-            for folder in folders:
-                temp_ligand_file_list = find_ligand_file_in_folder(os.path.join(folder_path, folder))
-                ligand_file_list.extend(temp_ligand_file_list)
+def main(ligand_path, conformers_per_molecule, overwrite=False, ligand_type='ligand', output_dir=None):
+    if os.path.isfile(ligand_path):
+        if ligand_path.find('_conf') != -1:
+            suffix = get_suffix_search_in_file_name(ligand_path)
         else:
-            ligand_file_list = find_ligand_file_in_folder(folder_path)
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            executor.map(preprocess_ligands_one_target, ligand_file_list, repeat(rad_dict), repeat(conf_num))
-        # preprocess_ligands_one_target(ligand_file_list[0], rad_dict, conf_num)
+            suffix = get_suffix(conformers_per_molecule)
+        if output_dir is None:
+            output_dir = os.path.dirname(ligand_path)
+        output_folder = os.path.join(output_dir, f"preprocessed_ligands{suffix}")
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+        elif os.listdir(output_folder) and not overwrite:
+            print(f'{output_folder} is not empty... Skipping. \nUse overwrite=True to overwrite.')
+        else:
+            load_atoms_mol2(ligand_path, output_folder, ligand_type=ligand_type)
+        return output_folder
+    else:
+        exit(f'Argument used for ligand_path is not a file: {ligand_path}')
 
 
 if __name__ == "__main__":

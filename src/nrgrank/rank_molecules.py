@@ -3,11 +3,10 @@ import shutil
 import numpy as np
 from numba import njit
 import timeit
-from pathlib import Path
 import argparse
 import math as m
 import pickle
-from general_functions import get_params_dict, write_pdb
+from nrgrank.general_functions import write_pdb
 
 # def njit(njit):
 #     return njit
@@ -26,7 +25,7 @@ def center_coords(ligand_atoms_xyz, list_size):
     return centered_coord
 
 
-def load_ligands(target_path, ligand_type, start, end, conf_num, output_pose, path_to_ligands=None):
+def load_ligands(target_path, ligand_type, start, end, conf_num, path_to_ligands=None):
     if not path_to_ligands:
         if conf_num == 0:
             print('Ligands are in an old path and conf number is 0')
@@ -37,10 +36,8 @@ def load_ligands(target_path, ligand_type, start, end, conf_num, output_pose, pa
             ligand_folder = f"preprocessed_ligands_{conf_num}_conf"
             path_to_ligands = os.path.join(target_path, ligand_folder)
 
-    atom_name = []
-    if output_pose:
-        with open(os.path.join(path_to_ligands, f"{ligand_type}_atom_name.pkl"), 'rb') as f:
-            atom_name = pickle.load(f)[start:end].copy()
+    with open(os.path.join(path_to_ligands, f"{ligand_type}_atom_name.pkl"), 'rb') as f:
+        atom_name = pickle.load(f)[start:end].copy()
     with open(os.path.join(path_to_ligands, f"{ligand_type}_molecule_name.pkl"), 'rb') as f:
         molecule_name = pickle.load(f)[start:end].copy()
     atom_type = np.load(os.path.join(path_to_ligands, f"{ligand_type}_atom_type.npy"), mmap_mode='r')[start:end].copy()
@@ -161,16 +158,16 @@ def get_cf_main(binding_site_grid, ligand_orientations, cf_size_list, n_cf_evals
 
 
 @njit
-def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf_evals, load_cf_list, ligand_atoms_types,
-                default_cf, cell_width, min_xyz, load_range_list, preload_grid_distance, clash_list,
-                clash_list_size, num_atoms):
+def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf_evals, load_cf_list,
+                      ligand_atoms_types, default_cf, cell_width, min_xyz, load_range_list, preload_grid_distance,
+                      clash_list, clash_list_size, num_atoms):
     cfs_list = np.zeros((n_cf_evals, 3), dtype=np.float32)
     counter = 0
     for point_index, point in enumerate(binding_site_grid):
         for pose_index, lig_pose in enumerate(ligand_orientations):
-            cf = get_cf_with_clash(lig_pose, point, load_range_list, preload_grid_distance, cf_size_list,
-                                       load_cf_list, ligand_atoms_types, default_cf, cell_width, min_xyz,
-                                       clash_list, clash_list_size, num_atoms)
+            cf = get_cf_with_clash(lig_pose, point, load_range_list, preload_grid_distance, cf_size_list, load_cf_list,
+                                   ligand_atoms_types, default_cf, cell_width, min_xyz, clash_list, clash_list_size,
+                                   num_atoms)
             cfs_list[counter][0] = cf
             cfs_list[counter][1] = pose_index
             cfs_list[counter][2] = point_index
@@ -178,179 +175,182 @@ def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf
     return cfs_list
 
 
-def main(path_to_target, ligand_type, ligand_slice, target, path_to_ligands, skip_info, skip_remark,
-         create_folder=True, deps_folder=None, temp_path=None):
-    if deps_folder is None:
-        deps_folder = os.path.join('.', 'deps')
-    if temp_path is None:
-        temp_path = os.path.join('.', 'temp')
-    root_software_path = Path(__file__).resolve().parents[1]
-    os.chdir(root_software_path)
-    config_file = os.path.join(deps_folder, "config.txt")
+def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result_folder_path, ligand_type='ligand',
+         ligand_slice=None, write_info=True, unique_run_id=None, **user_config):
+    """
+    result_folder_path is the path to a folder in which the result and ligand pose folders will be created.
+    """
     time_start = timeit.default_timer()
-    verbose = False
-    time = False
     save_time = False
+    default_cf = 100000000
+    info_lines = []
     output_lines = []
-    params_dict = get_params_dict(config_file)
-    dot_division = params_dict['LIGAND_TEST_DOT_SEPARATION']
-    conf_num = params_dict['CONFORMERS_PER_MOLECULE']
-    poses_per_molecule = params_dict["POSES_PER_MOLECULE"]
-    use_clash = params_dict["USE_CLASH"]
-    default_cf = params_dict['DEFAULT_CF']
-    temp_ligand_poses_path = os.path.join(temp_path, 'ligand_poses', target)
-    temp_output_path = os.path.join(temp_path, 'results', target)
-    if create_folder:
-        if os.path.exists(temp_output_path):
-            shutil.rmtree(temp_output_path)
-        os.makedirs(temp_output_path, exist_ok=True)
-    else:
-        if not os.path.exists(temp_output_path):
-            exit('Folder to output result does not exist. You may want to avoid using the "-o" flag.')
-    if ligand_slice:
-        start = ligand_slice[0]
-        end = ligand_slice[1]
-        output_file_suffix = f"{start}_{end}.txt"
-    else:
-        start = 0
-        end = None
-        output_file_suffix = ".txt"
-    output_file_path = os.path.join(temp_output_path, f'{ligand_type}_{output_file_suffix}')
-    if path_to_ligands is not None:
-        output_file_path = os.path.join(os.path.dirname(output_file_path), f"{'_'.join(os.path.basename(path_to_ligands).split('_')[1:])}_{output_file_suffix}")
-    if skip_remark:
-        output_file_path = os.path.splitext(output_file_path)[0] + '.csv'
 
-    target_preprocessing_data_path = os.path.join(path_to_target, 'preprocessed_target')
-    binding_site_grid = np.load(os.path.join(target_preprocessing_data_path, f"ligand_test_dots_{dot_division}.npy"))
-    precalculated_cf_list = np.load(os.path.join(target_preprocessing_data_path, f"cf_list.npy"))
+    params_dict_default = {
+        'USE_CLASH': True,
+        'LIGAND_ROTATIONS_PER_AXIS': 9,
+        'LIGAND_TEST_DOT_SEPARATION': 1.5,
+        'CLASH_DOT_DISTANCE': 0.25,
+        'CONFORMERS_PER_MOLECULE': 1,
+        'POSES_SAVED_PER_MOLECULE': 0,
+        'WRITE_LIGAND_TEST_DOTS': False,
+        'VERBOSE': False,
+        'SAVE_TOTAL_TIME': False
+    }
+    params_dict = params_dict_default.copy()
+    params_dict.update(user_config)
+
+    test_dot_separation = params_dict['LIGAND_TEST_DOT_SEPARATION']
+    conf_num = params_dict['CONFORMERS_PER_MOLECULE']
+    poses_saved_per_molecule = params_dict["POSES_SAVED_PER_MOLECULE"]
+    use_clash = params_dict["USE_CLASH"]
+    ligand_rotations_per_axis = params_dict["LIGAND_ROTATIONS_PER_AXIS"]
+    clash_dot_distance = params_dict["CLASH_DOT_DISTANCE"]
+    write_ligand_test_dots = params_dict["WRITE_LIGAND_TEST_DOTS"]
+    ligand_pose_save_path = os.path.join(result_folder_path, 'ligand_poses')
+
+    if not os.path.isdir(result_folder_path):
+        os.makedirs(result_folder_path)
+    if not ligand_slice:
+        ligand_slice = [0, None]
+    start = ligand_slice[0]
+    end = ligand_slice[1]
+    conformers_per_molecule = int(os.path.basename(preprocessed_ligand_path).split('_')[2])
+    output_file_name = f"{target_name}"
+    if conformers_per_molecule > 1:
+        output_file_name += f"_{conformers_per_molecule}_conf"
+    if end:
+        output_file_name += f"_split_{start}_{end}"
+    if unique_run_id:
+        output_file_name += f"_run_{unique_run_id}"
+    output_file_path = os.path.join(result_folder_path, f'{output_file_name}.csv')
+    counter = 2
+    while os.path.isfile(output_file_path):
+        output_file_path = os.path.join(result_folder_path, f'{output_file_name}_({counter}).csv')
+        counter += 1
+
+    binding_site_grid = np.load(os.path.join(preprocessed_target_path, f"ligand_test_dots_{test_dot_separation}.npy"))
+    precalculated_cf_list = np.load(os.path.join(preprocessed_target_path, f"cf_list.npy"))
 
     if use_clash:
-        load_range_list = np.load(os.path.join(target_preprocessing_data_path, "bd_site_cuboid_coord_range_array.npy"))
-        clash_list = np.load(os.path.join(target_preprocessing_data_path, f"clash_list_{params_dict['CLASH_DOT_DISTANCE']}.npy"))
+        load_range_list = np.load(os.path.join(preprocessed_target_path, "bd_site_cuboid_coord_range_array.npy"))
+        clash_list = np.load(os.path.join(preprocessed_target_path, f"clash_list_{clash_dot_distance}.npy"))
         clash_list_size = clash_list.shape
     else:
         load_range_list = None
         clash_list = None
         clash_list_size = None
 
-    if params_dict["WRITE_LIGAND_TEST_DOTS"]:
-        write_pdb(binding_site_grid, "ligand_test_dots", temp_ligand_poses_path, None, None)
-    n_cf_evals = len(binding_site_grid) * params_dict["ROTATIONS_PER_AXIS"]**3
-    ligands_atom_names, ligands_atom_types, ligands_atom_xyz, ligand_name_list, atom_num_per_ligand, ligand_count \
-        = load_ligands(path_to_target, ligand_type, start, end, conf_num, params_dict["OUTPUT_POSE"], path_to_ligands=path_to_ligands)
-    cfs_list_by_ligand = np.zeros(ligand_count, dtype=np.float32)
+    if write_ligand_test_dots:
+        write_pdb(binding_site_grid, "ligand_test_dots", ligand_pose_save_path, None, None)
+    n_cf_evals = len(binding_site_grid) * ligand_rotations_per_axis**3
+    atom_name_array, atom_type_array, atom_xyz_array, molecule_name_array, atoms_per_molecule_array, molecule_count_array \
+        = load_ligands(preprocessed_target_path, ligand_type, start, end, conf_num, path_to_ligands=preprocessed_ligand_path)
+    cfs_list_by_ligand = np.zeros(molecule_count_array, dtype=np.float32)
     if save_time:
-        time_list = np.zeros(ligand_count, dtype=np.float32)
+        time_list = np.zeros(molecule_count_array, dtype=np.float32)
 
+    cell_width = np.load(os.path.join(preprocessed_target_path, 'index_cube_cell_width.npy'))
     cf_size_list = np.array([np.size(precalculated_cf_list, axis=0), np.size(precalculated_cf_list, axis=1), np.size(precalculated_cf_list, axis=2)])
-    output_lines.append(f"REMARK target folder: {path_to_target}")
-    output_lines.append(f"REMARK software: {os.path.basename(__file__)}")
-    output_lines.append(f"REMARK ligand type: {ligand_type}")
-    output_lines.append(f"REMARK number of conformers: {conf_num}")
-    output_lines.append(f"REMARK rotations per axis: {params_dict['ROTATIONS_PER_AXIS']}")
-    output_lines.append(f"REMARK dot separation: {params_dict['LIGAND_TEST_DOT_SEPARATION']} A")
-    output_lines.append(f"REMARK water vdW radius: {params_dict['WATER_RADIUS']} A")
-    output_lines.append(f"REMARK preloaded grid distance: {params_dict['CLASH_DOT_DISTANCE']} A")
-    output_lines.append(f"REMARK Total binding site grid dots: {len(binding_site_grid)}")
-    output_lines.append(f"REMARK Total CF evaluations per ligand: {n_cf_evals}")
-    output_lines.append(f"REMARK use clash: {params_dict['USE_CLASH']}")
-    output_lines.append(f"REMARK index cube width: {params_dict['CELL_WIDTH']}")
 
-    if time:
-        output_lines.append(f"REMARK It took {timeit.default_timer() - time_start:.3f} seconds to get setup")
-    if verbose:
-        print("\n".join(output_lines))
-    min_xyz = np.load(os.path.join(target_preprocessing_data_path, 'index_cube_min_xyz.npy'))
-    cell_width = np.load(os.path.join(target_preprocessing_data_path, 'index_cube_cell_width.npy'))
+    info_lines.append(f"REMARK target folder: {preprocessed_target_path}")
+    info_lines.append(f"REMARK software: {os.path.basename(__file__)}")
+    info_lines.append(f"REMARK ligand type: {ligand_type}")
+    info_lines.append(f"REMARK number of conformers: {conf_num}")
+    info_lines.append(f"REMARK rotations per axis: {ligand_rotations_per_axis}")
+    info_lines.append(f"REMARK dot separation: {test_dot_separation} A")
+    info_lines.append(f"REMARK preloaded grid distance: {clash_dot_distance} A")
+    info_lines.append(f"REMARK Total binding site grid dots: {len(binding_site_grid)}")
+    info_lines.append(f"REMARK Total CF evaluations per ligand: {n_cf_evals}")
+    info_lines.append(f"REMARK use clash: {use_clash}")
+    info_lines.append(f"REMARK index cube width: {cell_width}")
 
-    for i, ligand in enumerate(atom_num_per_ligand):
-        time_ligand_start = timeit.default_timer()
-        ligand_atom_count = atom_num_per_ligand[i]
-        ligand_atom_xyz = ligands_atom_xyz[i][0:ligand_atom_count]
-        ligand_atom_types = ligands_atom_types[i][0:ligand_atom_count]
-        ligand_rotations = rotate_ligand(ligand_atom_xyz, params_dict['ROTATIONS_PER_AXIS'])
-        n_cf_evals = len(binding_site_grid) * len(ligand_rotations)
-        num_atoms = len(ligand_rotations[0])
+    if params_dict['VERBOSE']:
+        print("\n".join(info_lines))
+    min_xyz = np.load(os.path.join(preprocessed_target_path, 'index_cube_min_xyz.npy'))
+
+    for i, molecule in enumerate(atoms_per_molecule_array):
+        time_molecule_start = timeit.default_timer()
+        molecule_atom_count = atoms_per_molecule_array[i]
+        molecule_atom_xyz = atom_xyz_array[i][0:molecule_atom_count]
+        molecule_atom_types = atom_type_array[i][0:molecule_atom_count]
+        molecule_rotations = rotate_ligand(molecule_atom_xyz, ligand_rotations_per_axis)
+        num_atoms = len(molecule_rotations[0])
         if not use_clash:
-            cfs_list = get_cf_main(binding_site_grid, ligand_rotations, cf_size_list, n_cf_evals, precalculated_cf_list,
-                                   ligand_atom_types,default_cf, cell_width, min_xyz)
+            cfs_list = get_cf_main(binding_site_grid, molecule_rotations, cf_size_list, n_cf_evals, precalculated_cf_list,
+                                   molecule_atom_types, default_cf, cell_width, min_xyz)
         else:
-            cfs_list = get_cf_main_clash(binding_site_grid, ligand_rotations,cf_size_list, n_cf_evals,
-                                         precalculated_cf_list, ligand_atom_types, default_cf, cell_width, min_xyz,
-                                         load_range_list,params_dict['CLASH_DOT_DISTANCE'],clash_list, clash_list_size,
-                                         num_atoms)
-
-        sorted_indices = np.argsort(cfs_list[:, 0])[:poses_per_molecule]
-        cfs_list_by_ligand[i] = cfs_list[sorted_indices[0]][0]
-        if params_dict["OUTPUT_POSE"]:
-            ligand_atoms_names = ligands_atom_names[i][0:ligand_atom_count]
-            if params_dict['POSES_PER_MOLECULE'] == 1:
-                molecule_save_folder = temp_ligand_poses_path
+            cfs_list = get_cf_main_clash(binding_site_grid, molecule_rotations, cf_size_list, n_cf_evals,
+                                         precalculated_cf_list, molecule_atom_types, default_cf, cell_width, min_xyz,
+                                         load_range_list, clash_dot_distance, clash_list,
+                                         clash_list_size, num_atoms)
+        cfs_list_by_ligand[i] = np.min(cfs_list[:, 0])
+        if poses_saved_per_molecule > 0:
+            sorted_indices = np.argsort(cfs_list[:, 0])[:poses_saved_per_molecule]
+            molecule_atoms_names = atom_name_array[i][0:molecule_atom_count]
+            if poses_saved_per_molecule == 1:
+                molecule_save_folder = ligand_pose_save_path
             else:
-                molecule_save_folder = os.path.join(temp_ligand_poses_path, ligand_name_list[i])
+                molecule_save_folder = os.path.join(ligand_pose_save_path, molecule_name_array[i])
                 if not os.path.isdir(molecule_save_folder):
                     os.makedirs(molecule_save_folder)
-            for pose_number in range(0, poses_per_molecule, 1):
-                translated_coords = np.zeros((len(ligand_rotations[int(cfs_list[sorted_indices[pose_number]][1])]), 3), dtype=np.float32)
-                for atom in range(len(ligand_rotations[int(cfs_list[sorted_indices[pose_number]][1])])):
-                    translated_coords[atom] = np.add(
-                        ligand_rotations[int(cfs_list[sorted_indices[pose_number]][1])][atom],
-                        binding_site_grid[int(cfs_list[sorted_indices[pose_number]][2])])
-                pose_file_name = ligand_name_list[i]
-                if params_dict['CONFORMERS_PER_MOLECULE'] == 1:
-                    pose_file_name = pose_file_name.rsplit('_', 1)[0]
-                if params_dict['POSES_PER_MOLECULE'] != 1:
+            for pose_number in range(0, poses_saved_per_molecule, 1):
+                pose_index = sorted_indices[pose_number]
+                pose_info = cfs_list[pose_index]
+                pose_rotation_number = int(pose_info[1])
+                translated_coords = np.zeros((len(molecule_rotations[pose_rotation_number]), 3), dtype=np.float32)
+                for atom in range(len(molecule_rotations[pose_rotation_number])):
+                    translated_coords[atom] = np.add(molecule_rotations[pose_rotation_number][atom],
+                                                     binding_site_grid[int(pose_info[2])])
+                pose_file_name = molecule_name_array[i]
+                if conf_num == 1:
+                    if pose_file_name.endswith('0'):
+                        pose_file_name = pose_file_name.rsplit('_', 1)[0]
+                if poses_saved_per_molecule != 1:
                     pose_file_name += f'_pose_{pose_number+1}'
-                write_pdb(translated_coords, pose_file_name, molecule_save_folder,
-                           ligand_atoms_names, [f"REMARK CF {cfs_list[sorted_indices[pose_number]][0]:.2f}\n",
-                                                f"REMARK atom types: {np.array2string(ligand_atom_types, separator=' ', max_line_width=2000).strip('[]')}\n"])
+                write_pdb(translated_coords, pose_file_name, molecule_save_folder, molecule_atoms_names,
+                          [f"REMARK CF {cfs_list[sorted_indices[pose_number]][0]:.2f}\n",
+                           f"REMARK atom types: {np.array2string(molecule_atom_types, separator=' ', max_line_width=2000).strip('[]')}\n"])
         if save_time:
-            time_list[i] = timeit.default_timer() - time_ligand_start
+            time_list[i] = timeit.default_timer() - time_molecule_start
 
-    if time:
-        output_lines.append(f"REMARK total screen time: {timeit.default_timer() - time_start:.3f} seconds")
-        if verbose:
+    if params_dict['SAVE_TOTAL_TIME']:
+        info_lines.append(f"REMARK total screen time: {timeit.default_timer() - time_start:.3f} seconds")
+        if params_dict['VERBOSE']:
             print(output_lines[-1])
 
-    if not skip_info:
-        info_file_path = os.path.join(os.path.dirname(output_file_path), 'info.txt')
+    if write_info:
+        info_file_path = os.path.splitext(output_file_path)[0] + f'_info.txt'
         with open(info_file_path, "w") as f:
-            f.writelines("\n".join(output_lines))
+            f.writelines("\n".join(info_lines))
 
-    output_header = "HEADER,Name,CF"
+    output_header = "Name,CF"
     if ligand_type != 'ligand':
         output_header += ',Type'
     if conf_num > 1:
         output_header += ",Conformer_number"
     if save_time:
         output_header += ",Time"
-    if skip_remark:
-        output_lines = [output_header[7:]]
     else:
         output_lines.append(output_header)
-
-    if verbose:
-        print(output_header)
-    for z, ligand in enumerate(atom_num_per_ligand):
-        output = f"RESULT,{ligand_name_list[z].rsplit('_', 1)[0]},{cfs_list_by_ligand[z]:.0f}"
-        if skip_info or skip_remark:
-            output = output[7:]
+    for z, ligand in enumerate(atoms_per_molecule_array):
+        output = f"{molecule_name_array[z].rsplit('_', 1)[0]},{cfs_list_by_ligand[z]:.0f}"
         if ligand_type != 'ligand':
             output += f',{ligand_type}'
         if conf_num > 1:
             try:
-                output += "," + ligand_name_list[z].rsplit('_', 1)[1]
+                output += "," + molecule_name_array[z].rsplit('_', 1)[1]
             except:
                 output += f",{str(0)}"
         if save_time:
             output += f",{time_list[z]:.3f}"
         output_lines.append(output)
-        if verbose:
-            print(output)
     with open(output_file_path, "w") as f:
         f.writelines("\n".join(output_lines))
         f.write("\n")
+    if params_dict['VERBOSE']:
+        print("\n".join(output_lines))
+    return output_file_path
 
 
 def get_args():
@@ -360,10 +360,7 @@ def get_args():
     parser.add_argument('-l', '--ligand_path', default=None, type=str, help='Custom ligand path')
     parser.add_argument('-lt', '--ligand_type', type=str, default='ligand',help='Specify if ligand is of a special type')
     parser.add_argument('-si', '--skip_info', action='store_true', help='Skips writing a target info file')
-    parser.add_argument('-sr', '--skip_remark', action='store_true', help='Skips REMARK at start of result file')
-    parser.add_argument('-o', '--create_folder', action='store_false', help='Prevents NRGRank from making folders to store output')
-
-    parser.add_argument('-c', '--deps_path', default=None, type=str, help='Custom deps path')
+    parser.add_argument('-o', '--create_folder', action='store_false', help='Prevents nrgrank from making folders to store output')
     parser.add_argument('-t', '--temp_path', default=None, type=str, help='Custom temp path')
 
     args = parser.parse_args()
@@ -372,17 +369,14 @@ def get_args():
     ligand_slice = args.ligand_slice
     if ligand_slice:
         ligand_slice = [int(x) for x in ligand_slice.split(',')]
-    target = os.path.basename(path_to_target)
     path_to_ligands = args.ligand_path
     skip_info = args.skip_info
     skip_remark = args.skip_remark
     create_folder = args.create_folder
-    # issue with None
-    deps_path = args.deps_path
     temp_path = args.temp_path
 
-    main(path_to_target, category, ligand_slice, target, path_to_ligands, skip_info, skip_remark, create_folder,
-         deps_folder=deps_path, temp_path=temp_path)
+    main(path_to_target, path_to_ligands, category, ligand_slice, skip_info, skip_remark, create_folder,
+         temp_path=temp_path)
 
 
 if __name__ == "__main__":
