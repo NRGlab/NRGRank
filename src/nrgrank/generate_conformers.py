@@ -142,7 +142,7 @@ def read_args():
     args = parser.parse_args()
 
     main(
-        smiles_path=args.smiles_path,
+        smiles_path_or_list=args.smiles_path,
         smiles_column_number=args.smiles_column_number,
         name_column_number=args.name_column_number,
         output_folder_path=args.output_folder_path,
@@ -154,20 +154,24 @@ def read_args():
     )
 
 
-def main(smiles_path, smiles_column_number, name_column_number, output_folder_path, conformers_per_molecule=1, optimize=False, convert=True,
-         preprocess=False, molecular_weight_max=None, heavy_atoms_min=None):
-    root_software_path = Path(__file__).resolve().parents[1]
-    os.chdir(root_software_path)
+def main(smiles_path_or_dict, output_folder_path, smiles_column_number=None, name_column_number=None,
+         conformers_per_molecule=1, optimize=False, convert=True, preprocess=False, molecular_weight_max=None,
+         heavy_atoms_min=None):
+    if isinstance(smiles_path_or_dict, dict):
+        molecule_smiles_list = list(smiles_path_or_dict['Smiles'])
+        molecule_name_list = list(smiles_path_or_dict['Name'])
+    else:
+        delimiter = get_delimiter(smiles_path_or_dict, bytes_to_read=4096)
+        molecule_smiles_list = read_column_from_csv(smiles_path_or_dict, smiles_column_number, delimiter, has_header=True)
+        molecule_name_list = read_column_from_csv(smiles_path_or_dict, name_column_number, delimiter, has_header=True)
 
     if conformers_per_molecule <= 0:
         exit("Number of conformers must be greater than 0.")
 
-    if not output_folder_path:
-        output_folder_path = os.path.join(os.path.dirname(smiles_path), f"{os.path.basename(smiles_path).split('.')[0]}_conformers")
     if not os.path.isdir(output_folder_path):
         os.mkdir(output_folder_path)
 
-    sdf_output_file = os.path.join(output_folder_path, f"{os.path.splitext(os.path.basename(smiles_path))[0]}")
+    sdf_output_file = os.path.join(output_folder_path, "conformer")
     if conformers_per_molecule > 1:
         sdf_output_file += f"_{conformers_per_molecule}_conf"
     if optimize:
@@ -176,10 +180,6 @@ def main(smiles_path, smiles_column_number, name_column_number, output_folder_pa
     mol2_output_file = os.path.splitext(sdf_output_file)[0] + '.mol2'
 
     writer = AllChem.SDWriter(sdf_output_file)
-
-    delimiter = get_delimiter(smiles_path, bytes_to_read=4096)
-    molecule_smiles_list = read_column_from_csv(smiles_path, smiles_column_number, delimiter, has_header=True)
-    molecule_name_list = read_column_from_csv(smiles_path, name_column_number, delimiter, has_header=True)
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         for mol in executor.map(generate_conformers, molecule_smiles_list, molecule_name_list,

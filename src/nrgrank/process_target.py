@@ -135,7 +135,7 @@ def prepare_preprocess_output(path_to_target, params_dict):
     return numpy_output_path
 
 
-def load_ligand_test_dots(test_dot_separation, binding_site_spheres):
+def load_ligand_test_dots(test_dot_separation, binding_site_spheres, ignore_distance_sphere):
     """ This function uses the binding site spheres to make dots on which the ligand will be centered for testing poses"""
     grid_coords = []
     a = np.array(binding_site_spheres)
@@ -149,10 +149,13 @@ def load_ligand_test_dots(test_dot_separation, binding_site_spheres):
             for dot_z in np.arange(z[0], z[1], test_dot_separation):
                 coords = np.array([round(dot_x, 3), round(dot_y, 3), round(dot_z, 3)])
                 for row in a:
-                    distance = np.linalg.norm(coords - row[:3])
-                    if distance < row[3]:
+                    if ignore_distance_sphere:
                         grid_coords.append(coords)
-                        break
+                    else:
+                        distance = np.linalg.norm(coords - row[:3])
+                        if distance < row[3]:
+                            grid_coords.append(coords)
+                            break
     return grid_coords
 
 
@@ -255,7 +258,7 @@ def get_clash_for_dot(ligand_atom_coord, target_grid, min_xyz, cell_width, targe
 
 
 def preprocess_one_target(target_file_path, binding_site_file_path, params_dict, energy_matrix, time_start, overwrite,
-                          verbose=False, create_new_dir=True):
+                          verbose=False, create_new_dir=True, ignore_distance_sphere=False):
     use_clash = params_dict["USE_CLASH"]
     clash_dot_distance = params_dict['CLASH_DOT_DISTANCE']
     bd_site_cuboid_padding = params_dict["BD_SITE_CUBOID_PADDING"]
@@ -319,7 +322,7 @@ def preprocess_one_target(target_file_path, binding_site_file_path, params_dict,
 
     ligand_test_dot_file_path = os.path.join(preprocessed_target_folder_path, f"ligand_test_dots_{test_dot_separation}.npy")
     if not os.path.isfile(ligand_test_dot_file_path) or overwrite:
-        original_grid = load_ligand_test_dots(test_dot_separation, binding_site_spheres)
+        original_grid = load_ligand_test_dots(test_dot_separation, binding_site_spheres, ignore_distance_sphere)
         clean_binding_site_grid(index_cubes, original_grid, min_xyz, cell_width, target_atoms_xyz,
                                 ligand_test_dot_file_path)
     else:
@@ -354,7 +357,7 @@ def get_args():
     main(path_to_targets, target_list, overwrite=args.overwrite)
 
 
-def main(target_mol2_path, binding_site_file_path, create_new_dir=True, overwrite=False, **user_config):
+def main(target_mol2_path, binding_site_file_path, create_new_dir=True, overwrite=False, ignore_distance_sphere=False, **user_config):
     time_start = timeit.default_timer()
     params_dict_default = {
         'WATER_RADIUS': 1.4,
@@ -386,7 +389,7 @@ def main(target_mol2_path, binding_site_file_path, create_new_dir=True, overwrit
         exit(f'{binding_site_file_path} is not a file')
 
     target_save_dir = preprocess_one_target(target_mol2_path, binding_site_file_path, params_dict, energy_matrix,
-                                            time_start, overwrite, verbose, create_new_dir)
+                                            time_start, overwrite, verbose, create_new_dir, ignore_distance_sphere)
     return target_save_dir
 
 

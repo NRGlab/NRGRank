@@ -192,7 +192,7 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         'LIGAND_TEST_DOT_SEPARATION': 1.5,
         'CLASH_DOT_DISTANCE': 0.25,
         'CONFORMERS_PER_MOLECULE': 1,
-        'POSES_SAVED_PER_MOLECULE': 0,
+        'POSES_SAVED_PER_MOLECULE': 1,
         'WRITE_LIGAND_TEST_DOTS': False,
         'VERBOSE': False,
         'SAVE_TOTAL_TIME': False
@@ -224,10 +224,14 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
     if unique_run_id:
         output_file_name += f"_run_{unique_run_id}"
     output_file_path = os.path.join(result_folder_path, f'{output_file_name}.csv')
-    counter = 2
+    counter = 1
+    duplicate_file = False
     while os.path.isfile(output_file_path):
-        output_file_path = os.path.join(result_folder_path, f'{output_file_name}_({counter}).csv')
         counter += 1
+        output_file_path = os.path.join(result_folder_path, f'{output_file_name}_({counter}).csv')
+        duplicate_file = True
+    if duplicate_file:
+        ligand_pose_save_path += f"_({counter})"
 
     binding_site_grid = np.load(os.path.join(preprocessed_target_path, f"ligand_test_dots_{test_dot_separation}.npy"))
     precalculated_cf_list = np.load(os.path.join(preprocessed_target_path, f"cf_list.npy"))
@@ -334,7 +338,7 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
     else:
         output_lines.append(output_header)
     for z, ligand in enumerate(atoms_per_molecule_array):
-        output = f"{molecule_name_array[z].rsplit('_', 1)[0]},{cfs_list_by_ligand[z]:.0f}"
+        output = f"'{molecule_name_array[z].rsplit('_', 1)[0]}',{cfs_list_by_ligand[z]:.0f}"
         if ligand_type != 'ligand':
             output += f',{ligand_type}'
         if conf_num > 1:

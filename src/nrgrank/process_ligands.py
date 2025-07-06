@@ -142,7 +142,7 @@ def main(ligand_path, conformers_per_molecule, overwrite=False, ligand_type='lig
         output_folder = os.path.join(output_dir, f"preprocessed_ligands{suffix}")
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
-        elif os.listdir(output_folder) and not overwrite:
+        if os.listdir(output_folder) and not overwrite:
             print(f'{output_folder} is not empty... Skipping. \nUse overwrite=True to overwrite.')
         else:
             load_atoms_mol2(ligand_path, output_folder, ligand_type=ligand_type)
