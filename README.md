@@ -75,20 +75,22 @@ All ligands for one screen must be in the same mol2 file
 
 ### Optional Flags
     
-| Flag             | Description                                                                        | Possible value(s)   |
-|------------------|------------------------------------------------------------------------------------|---------------------|
-| `ligand_type`    | Type of ligand. Useful when benchmarking with DUD-E                                | active,decoy,ligand |
-| `ligand_slice`   | List of 2 numbers containing the index of the first and last ligand to be screened | (list)              |
-| `write_info`     | Write a .txt file containing information about the run                             | True,False          |
-| `unique_run_id`  | Adds a unique id to the output                                                     | (str,int)           |
+| Flag                        | Description                                                                        | Possible value(s)   |
+|-----------------------------|------------------------------------------------------------------------------------|---------------------|
+| `ligand_type`               | Type of ligand. Useful when benchmarking with DUD-E                                | active,decoy,ligand |
+| `ligand_slice`              | List of 2 numbers containing the index of the first and last ligand to be screened | (list)              |
+| `write_info`                | Write a .txt file containing information about the run                             | True,False          |
+| `write_csv`                 | Write a the result csv                                                             | True,False          |
+| `unique_run_id`             | Adds a unique id to the output                                                     | (str,int)           |
+| `result_csv_and_pose_name`  | changes the name of written result csv and folder for ligand poses                 | (str)               |
 
 ### Example commands:
 
    ```
-   result_file_path = nrgrank_main(target_name='target', 
+   result_file_path, result_csv_lines = nrgrank_main(target_name='target', 
                       preprocessed_target_path='foo/bar/preprocessed_target', 
                       preprocessed_ligand_path='foo/bar/preprocessed_ligands_1_conf',
                       result_folder_path='foo/bar/results')
    ```
 
-Returns the path to the result file
+Returns the path to the result file and the lines contained in the result csv

@@ -357,7 +357,13 @@ def get_args():
     main(path_to_targets, target_list, overwrite=args.overwrite)
 
 
-def main(target_mol2_path, binding_site_file_path, create_new_dir=True, overwrite=False, ignore_distance_sphere=False, **user_config):
+def main(target_mol2_path: os.PathLike[str] | str,
+         binding_site_file_path: os.PathLike[str] | str,
+         create_new_dir: bool = True,
+         overwrite: bool = False,
+         ignore_distance_sphere: bool = False,
+         **user_config) -> str:
+
     time_start = timeit.default_timer()
     params_dict_default = {
         'WATER_RADIUS': 1.4,
@@ -380,13 +386,17 @@ def main(target_mol2_path, binding_site_file_path, create_new_dir=True, overwrit
     matrix_path = importlib.resources.files('nrgrank').joinpath('deps', 'matrix', f'{matrix_name}.npy')
     energy_matrix = np.load(matrix_path)
 
-    if not type(target_mol2_path) is str or type(binding_site_file_path) is not str:
-        exit('target_file and binding_site_file_path must be strings')
+    target_mol2_path = os.fspath(target_mol2_path)
+    binding_site_file_path = os.fspath(binding_site_file_path)
 
-    if not os.path.isfile(target_mol2_path):
-        exit(f'{target_mol2_path} is not a file')
-    if not os.path.isfile(binding_site_file_path):
-        exit(f'{binding_site_file_path} is not a file')
+    if not os.path.exists(target_mol2_path):
+        raise FileNotFoundError(f'{target_mol2_path} does not exist')
+    if os.path.isdir(target_mol2_path):
+        raise IsADirectoryError(f'{target_mol2_path} is a directory, expected a file')
+    if not os.path.exists(binding_site_file_path):
+        raise FileNotFoundError(f'{binding_site_file_path} does not exist')
+    if os.path.isdir(binding_site_file_path):
+        raise IsADirectoryError(f'{binding_site_file_path} is a directory, expected a file')
 
     target_save_dir = preprocess_one_target(target_mol2_path, binding_site_file_path, params_dict, energy_matrix,
                                             time_start, overwrite, verbose, create_new_dir, ignore_distance_sphere)

@@ -1,5 +1,4 @@
 import os
-import shutil
 import numpy as np
 from numba import njit
 import timeit
@@ -175,10 +174,32 @@ def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf
     return cfs_list
 
 
-def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result_folder_path, ligand_type='ligand',
-         ligand_slice=None, write_info=True, unique_run_id=None, **user_config):
+def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result_folder_path,
+         result_csv_and_pose_name=None, ligand_type='ligand', ligand_slice=None, write_info=True, write_csv=True,
+         unique_run_id=None, **user_config):
     """
-    result_folder_path is the path to a folder in which the result and ligand pose folders will be created.
+
+    Parameters:
+        target_name (str): The name of the target. Used for naming the output CSV file when csv_and_pose_name is not specified.
+        preprocessed_target_path (str): Path to the preprocessed target folder from process_target().
+        preprocessed_ligand_path (str): Path to the preprocessed ligand folder from process_ligand().
+        result_folder_path (str): Directory path where the docking results will be stored.
+        result_csv_and_pose_name (str, optional): Custom name for CSV and pose files. Default is None.
+        ligand_type (str, optional): Type of ligand being processed (e.g., "ligand"). Default is 'ligand'. Useful when benchmarking with DUD-E
+        ligand_slice (list[int] or None, optional): Slice range of ligands to process. Default is None.
+        write_info (bool, optional): Flag to write informational remarks or not. Default is True.
+        unique_run_id (str, optional): Unique identifier for the run to avoid file name conflicts. Default is None.
+        write_csv (bool, optional): Flag to write CSV file or not. Default is True.
+        **user_config: Arbitrary keyword arguments for overriding default docking parameters.
+
+    Raises:
+        FileNotFoundError: If an expected file is not found in the preprocessed target path.
+        ValueError: If protein or ligand data integrity checks fail.
+        TypeError: If input parameter types are incorrect.
+
+    Returns:
+        None
+
     """
     time_start = timeit.default_timer()
     save_time = False
@@ -207,7 +228,19 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
     ligand_rotations_per_axis = params_dict["LIGAND_ROTATIONS_PER_AXIS"]
     clash_dot_distance = params_dict["CLASH_DOT_DISTANCE"]
     write_ligand_test_dots = params_dict["WRITE_LIGAND_TEST_DOTS"]
-    ligand_pose_save_path = os.path.join(result_folder_path, 'ligand_poses')
+    if not result_csv_and_pose_name:
+        ligand_pose_save_path = os.path.join(result_folder_path, 'ligand_poses')
+    else:
+        ligand_pose_save_path = os.path.join(result_folder_path, result_csv_and_pose_name)
+
+    if not os.path.exists(preprocessed_target_path):
+        raise FileNotFoundError(f'{preprocessed_target_path} does not exist')
+    if not os.path.isdir(preprocessed_target_path):
+        raise IsADirectoryError(f'{preprocessed_target_path} is not directory, expected a directory')
+    if not os.path.exists(preprocessed_ligand_path):
+        raise FileNotFoundError(f'{preprocessed_ligand_path} does not exist')
+    if not os.path.isdir(preprocessed_ligand_path):
+        raise IsADirectoryError(f'{preprocessed_ligand_path} is not a directory, expected a directory')
 
     if not os.path.isdir(result_folder_path):
         os.makedirs(result_folder_path)
@@ -215,20 +248,28 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         ligand_slice = [0, None]
     start = ligand_slice[0]
     end = ligand_slice[1]
-    conformers_per_molecule = int(os.path.basename(preprocessed_ligand_path).split('_')[2])
-    output_file_name = f"{target_name}"
-    if conformers_per_molecule > 1:
-        output_file_name += f"_{conformers_per_molecule}_conf"
-    if end:
-        output_file_name += f"_split_{start}_{end}"
-    if unique_run_id:
-        output_file_name += f"_run_{unique_run_id}"
-    output_file_path = os.path.join(result_folder_path, f'{output_file_name}.csv')
+    try:
+        conformers_per_molecule = int(os.path.basename(preprocessed_ligand_path).split('_')[2])
+    except IndexError:
+        raise ValueError(f'preprocessed_ligand_path is most likely not from the output of process_ligand()')
+    if result_csv_and_pose_name:
+        output_file_basename = result_csv_and_pose_name
+    else:
+        output_file_basename = target_name
+        if conformers_per_molecule > 1:
+            output_file_basename += f"_{conformers_per_molecule}_conf"
+        if end:
+            output_file_basename += f"_split_{start}_{end}"
+        if unique_run_id:
+            output_file_basename += f"_run_{unique_run_id}"
+    output_file_path = os.path.join(result_folder_path, f'{output_file_basename}.csv')
+
     counter = 1
     duplicate_file = False
     while os.path.isfile(output_file_path):
         counter += 1
-        output_file_path = os.path.join(result_folder_path, f'{output_file_name}_({counter}).csv')
+        output_file_path = os.path.join(result_folder_path, f'{output_file_basename}_({counter}).csv')
+
         duplicate_file = True
     if duplicate_file:
         ligand_pose_save_path += f"_({counter})"
@@ -335,8 +376,10 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         output_header += ",Conformer_number"
     if save_time:
         output_header += ",Time"
-    else:
-        output_lines.append(output_header)
+    if not write_csv:
+        output_header += ",Binding site"
+
+    output_lines.append(output_header)
     for z, ligand in enumerate(atoms_per_molecule_array):
         output = f"'{molecule_name_array[z].rsplit('_', 1)[0]}',{cfs_list_by_ligand[z]:.0f}"
         if ligand_type != 'ligand':
@@ -348,13 +391,16 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
                 output += f",{str(0)}"
         if save_time:
             output += f",{time_list[z]:.3f}"
+        if not write_csv:
+            output += f",{target_name}"
         output_lines.append(output)
-    with open(output_file_path, "w") as f:
-        f.writelines("\n".join(output_lines))
-        f.write("\n")
+    if write_csv:
+        with open(output_file_path, "w") as f:
+            f.writelines("\n".join(output_lines))
+            f.write("\n")
     if params_dict['VERBOSE']:
         print("\n".join(output_lines))
-    return output_file_path
+    return output_file_path, output_lines
 
 
 def get_args():
