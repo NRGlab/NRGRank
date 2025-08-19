@@ -248,16 +248,12 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         ligand_slice = [0, None]
     start = ligand_slice[0]
     end = ligand_slice[1]
-    try:
-        conformers_per_molecule = int(os.path.basename(preprocessed_ligand_path).split('_')[2])
-    except IndexError:
-        raise ValueError(f'preprocessed_ligand_path is most likely not from the output of process_ligand()')
     if result_csv_and_pose_name:
         output_file_basename = result_csv_and_pose_name
     else:
         output_file_basename = target_name
-        if conformers_per_molecule > 1:
-            output_file_basename += f"_{conformers_per_molecule}_conf"
+        if conf_num > 1:
+            output_file_basename += f"_{conf_num}_conf"
         if end:
             output_file_basename += f"_split_{start}_{end}"
         if unique_run_id:
