@@ -176,7 +176,7 @@ def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf
 
 def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result_folder_path,
          result_csv_and_pose_name=None, ligand_type='ligand', ligand_slice=None, write_info=True, write_csv=True,
-         unique_run_id=None, **user_config):
+         output_header=True, unique_run_id=None, **user_config):
     """
 
     Parameters:
@@ -188,8 +188,9 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         ligand_type (str, optional): Type of ligand being processed (e.g., "ligand"). Default is 'ligand'. Useful when benchmarking with DUD-E
         ligand_slice (list[int] or None, optional): Slice range of ligands to process. Default is None.
         write_info (bool, optional): Flag to write informational remarks or not. Default is True.
-        unique_run_id (str, optional): Unique identifier for the run to avoid file name conflicts. Default is None.
         write_csv (bool, optional): Flag to write CSV file or not. Default is True.
+        output_header (bool, optional): Flag to write header row in CSV file or not. Default is True.
+        unique_run_id (str, optional): Unique identifier for the run to avoid file name conflicts. Default is None.
         **user_config: Arbitrary keyword arguments for overriding default docking parameters.
 
     Raises:
@@ -223,6 +224,8 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
 
     test_dot_separation = params_dict['LIGAND_TEST_DOT_SEPARATION']
     conf_num = params_dict['CONFORMERS_PER_MOLECULE']
+    if preprocessed_ligand_path.find('_conf') != -1:
+        conf_num = int(preprocessed_ligand_path.split('_conf')[0].split('_')[-1])
     poses_saved_per_molecule = params_dict["POSES_SAVED_PER_MOLECULE"]
     use_clash = params_dict["USE_CLASH"]
     ligand_rotations_per_axis = params_dict["LIGAND_ROTATIONS_PER_AXIS"]
@@ -365,17 +368,17 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         with open(info_file_path, "w") as f:
             f.writelines("\n".join(info_lines))
 
-    output_header = "Name,CF"
+    csv_header = "Name,CF"
     if ligand_type != 'ligand':
-        output_header += ',Type'
+        csv_header += ',Type'
     if conf_num > 1:
-        output_header += ",Conformer_number"
+        csv_header += ",Conformer_number"
     if save_time:
-        output_header += ",Time"
+        csv_header += ",Time"
     if not write_csv:
-        output_header += ",Binding site"
-
-    output_lines.append(output_header)
+        csv_header += ",Binding site"
+    if output_header:
+        output_lines.append(csv_header)
     for z, ligand in enumerate(atoms_per_molecule_array):
         output = f"'{molecule_name_array[z].rsplit('_', 1)[0]}',{cfs_list_by_ligand[z]:.0f}"
         if ligand_type != 'ligand':
@@ -397,33 +400,3 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
     if params_dict['VERBOSE']:
         print("\n".join(output_lines))
     return output_file_path, output_lines
-
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-p", '--path_to_target', required=True, type=str, help='Path to target folder')
-    parser.add_argument("-s", '--ligand_slice', type=str, help='Subset of ligands to screen. 2 integers separated by a comma (last one not considered): 0,100')
-    parser.add_argument('-l', '--ligand_path', default=None, type=str, help='Custom ligand path')
-    parser.add_argument('-lt', '--ligand_type', type=str, default='ligand',help='Specify if ligand is of a special type')
-    parser.add_argument('-si', '--skip_info', action='store_true', help='Skips writing a target info file')
-    parser.add_argument('-o', '--create_folder', action='store_false', help='Prevents nrgrank from making folders to store output')
-    parser.add_argument('-t', '--temp_path', default=None, type=str, help='Custom temp path')
-
-    args = parser.parse_args()
-    path_to_target = args.path_to_target
-    category = args.ligand_type
-    ligand_slice = args.ligand_slice
-    if ligand_slice:
-        ligand_slice = [int(x) for x in ligand_slice.split(',')]
-    path_to_ligands = args.ligand_path
-    skip_info = args.skip_info
-    skip_remark = args.skip_remark
-    create_folder = args.create_folder
-    temp_path = args.temp_path
-
-    main(path_to_target, path_to_ligands, category, ligand_slice, skip_info, skip_remark, create_folder,
-         temp_path=temp_path)
-
-
-if __name__ == "__main__":
-    get_args()
