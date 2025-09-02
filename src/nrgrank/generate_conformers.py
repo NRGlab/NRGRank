@@ -1,14 +1,26 @@
 import concurrent.futures
 import os
-from rdkit import Chem
-from rdkit.Chem import AllChem, rdMolDescriptors, rdForceFieldHelpers, rdDistGeom
+try:
+    from rdkit import Chem
+    from rdkit.Chem import AllChem, rdMolDescriptors, rdForceFieldHelpers, rdDistGeom
+    HAS_RDKIT = True
+except Exception:
+    rdkit = None  # type: ignore
+    HAS_RDKIT = False
 from itertools import repeat
 from datetime import datetime
 from nrgrank import process_ligands
 import subprocess
-from pathlib import Path
 import csv
 import argparse
+
+
+def require_rdkit(feature: str = "this feature") -> None:
+    if not HAS_RDKIT:
+        raise ImportError(
+            f"RDKit is required for {feature}. Install with 'pip install nrgrank[rdkit]' "
+            f"or ensure RDKit is available in your environment."
+        )
 
 
 def get_delimiter(file_path, bytes_to_read=4096):
@@ -157,6 +169,7 @@ def read_args():
 def main(smiles_path_or_dict, output_folder_path, smiles_column_number=None, name_column_number=None,
          conformers_per_molecule=1, optimize=False, convert=True, preprocess=False, molecular_weight_max=None,
          heavy_atoms_min=None):
+    require_rdkit()
     if isinstance(smiles_path_or_dict, dict):
         molecule_smiles_list = list(smiles_path_or_dict['Smiles'])
         molecule_name_list = list(smiles_path_or_dict['Name'])

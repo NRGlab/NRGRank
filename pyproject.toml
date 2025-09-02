@@ -16,7 +16,6 @@ dependencies = [
     "scipy",
     "numpy",
     "numba",
-    "rdkit",
 ]
 
 authors = [
@@ -25,6 +24,11 @@ authors = [
 ]
 maintainers = [
   {name = "Thomas DesCôteaux", email = "thomas.descoteaux@umontreal.ca"}
+]
+
+[project.optional-dependencies]
+rdkit = [
+    "rdkit",
 ]
 
 [project.urls]
