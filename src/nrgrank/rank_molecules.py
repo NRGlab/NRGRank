@@ -190,7 +190,7 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         write_info (bool, optional): Flag to write informational remarks or not. Default is True.
         write_csv (bool, optional): Flag to write CSV file or not. Default is True.
         output_header (bool, optional): Flag to write header row in CSV file or not. Default is True.
-        unique_run_id (str, optional): Unique identifier for the run to avoid file name conflicts. Default is None.
+        unique_run_id (str, optional): Unique identifier for the run to avoid file name conflictsand also used to name ligand poses. Default is None.
         **user_config: Arbitrary keyword arguments for overriding default docking parameters.
 
     Raises:
@@ -350,11 +350,16 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
                 if conf_num == 1:
                     if pose_file_name.endswith('0'):
                         pose_file_name = pose_file_name.rsplit('_', 1)[0]
+                pose_file_name += f'_{unique_run_id}'
                 if poses_saved_per_molecule != 1:
                     pose_file_name += f'_pose_{pose_number+1}'
-                write_pdb(translated_coords, pose_file_name, molecule_save_folder, molecule_atoms_names,
-                          [f"REMARK CF {cfs_list[sorted_indices[pose_number]][0]:.2f}\n",
-                           f"REMARK atom types: {np.array2string(molecule_atom_types, separator=' ', max_line_width=2000).strip('[]')}\n"])
+                extra_info = [
+                              f"REMARK CF: {cfs_list[sorted_indices[pose_number]][0]:.2f}\n",
+                              f"REMARK atom types: {np.array2string(molecule_atom_types, separator=' ', max_line_width=2000).strip('[]')}\n"
+                ]
+                if unique_run_id:
+                    extra_info.append(f"REMARK unique_run_ID: {unique_run_id}\n")
+                write_pdb(translated_coords, pose_file_name, molecule_save_folder, molecule_atoms_names, extra_info)
         if save_time:
             time_list[i] = timeit.default_timer() - time_molecule_start
 
@@ -397,6 +402,8 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         with open(output_file_path, "w") as f:
             f.writelines("\n".join(output_lines))
             f.write("\n")
+    else:
+        output_file_path = None
     if params_dict['VERBOSE']:
         print("\n".join(output_lines))
     return output_file_path, output_lines

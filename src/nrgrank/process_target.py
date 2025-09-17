@@ -380,7 +380,7 @@ def main(target_mol2_path: os.PathLike[str] | str,
     use_clash = params_dict['USE_CLASH']
     matrix_name = params_dict['MATRIX_NAME']
     verbose = params_dict['VERBOSE']
-    if not use_clash:
+    if not use_clash and verbose:
         print('Considering poses with clashes')
 
     matrix_path = importlib.resources.files('nrgrank').joinpath('deps', 'matrix', f'{matrix_name}.npy')
