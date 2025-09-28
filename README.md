@@ -66,23 +66,31 @@ All ligands for one screen must be in the same mol2 file
 
 ### Required Flags
     
-| Flag                       | Description                                                                     | Possible value(s) |
-|----------------------------|---------------------------------------------------------------------------------|-------------------|
-| `target_name`              | Target name that is used to name the output file                                | (str)             |
-| `preprocessed_target_path` | Path to preprocessed_target folder (can be path returned from process_target)   | Absolute path     |
-| `preprocessed_ligand_path` | Path to preprocessed_ligands folder (can be path returned from process_ligands) | Absolute path     |
-| `result_folder_path`       | Path to folder where result file will be written                                | Absolute path     |
+| Flag                       | Description                                                                                           | Possible value(s) |
+|----------------------------|-------------------------------------------------------------------------------------------------------|-------------------|
+| `target_name`              | The name of the target. Used for naming the output CSV file when `csv_and_pose_name` is not specified | (str)             |
+| `preprocessed_target_path` | Path to the preprocessed target folder (e.g., output from `process_target()`)                         | Absolute path     |
+| `preprocessed_ligand_path` | Path to the preprocessed ligand folder (e.g., output from `process_ligand()`)                         | Absolute path     |
+| `result_folder_path`       | Directory path where the docking results will be stored                                               | Absolute path     |
+
+---
 
 ### Optional Flags
     
-| Flag                        | Description                                                                        | Possible value(s)   |
-|-----------------------------|------------------------------------------------------------------------------------|---------------------|
-| `ligand_type`               | Type of ligand. Useful when benchmarking with DUD-E                                | active,decoy,ligand |
-| `ligand_slice`              | List of 2 numbers containing the index of the first and last ligand to be screened | (list)              |
-| `write_info`                | Write a .txt file containing information about the run                             | True,False          |
-| `write_csv`                 | Write a the result csv                                                             | True,False          |
-| `unique_run_id`             | Adds a unique id to the output                                                     | (str,int)           |
-| `result_csv_and_pose_name`  | changes the name of written result csv and folder for ligand poses                 | (str)               |
+| Flag                       | Description                                                                   | Possible value(s)             |
+|----------------------------|-------------------------------------------------------------------------------|-------------------------------|
+| `result_csv_and_pose_name` | Custom name for CSV and pose files. If not given, defaults to `target_name`   | (str)                         |
+| `ligand_type`              | Type of ligand being processed. Useful when benchmarking with DUD-E           | "ligand", "active", "decoy"   |
+| `ligand_slice`             | Slice range of ligands to process                                             | list[int] or None             |
+| `write_info`               | Write informational remarks to output (e.g., .txt log)                        | True, False                   |
+| `write_file`               | Output result file(s)                                                         | True, False                   |
+| `output_dictionary`        | Output results as a Python dictionary                                         | True, False                   |
+| `file_separator`           | Separator character for the result file (CSV/TSV)                             | ",", "\t"                     |
+| `output_header`            | Write a header row in the CSV file                                            | True, False                   |
+| `save_time`                | Save time taken per molecule for docking                                      | True, False                   |
+| `normalise_score`          | Normalise docking score by number of atoms in molecule                        | True, False                   |
+| `unique_run_id`            | Unique identifier to avoid file name conflicts and used to name ligand poses  | (str)                         |
+| `user_config`              | Arbitrary keyword arguments for overriding default docking parameters         | key=value pairs               |
 
 ### Example commands:
 
