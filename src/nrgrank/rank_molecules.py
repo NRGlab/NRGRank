@@ -175,8 +175,8 @@ def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf
 
 
 def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result_folder_path,
-         result_csv_and_pose_name=None, ligand_type='ligand', ligand_slice=None, write_info=True, write_csv=True,
-         output_header=True, unique_run_id=None, **user_config):
+         result_csv_and_pose_name=None, ligand_type='ligand', ligand_slice=None, write_info=True, write_file=True,
+         file_separator=',', output_header=True, output_dictionary=True, unique_run_id=None, **user_config):
     """
 
     Parameters:
@@ -187,8 +187,10 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         result_csv_and_pose_name (str, optional): Custom name for CSV and pose files. Default is None.
         ligand_type (str, optional): Type of ligand being processed (e.g., "ligand"). Default is 'ligand'. Useful when benchmarking with DUD-E
         ligand_slice (list[int] or None, optional): Slice range of ligands to process. Default is None.
-        write_info (bool, optional): Flag to write informational remarks or not. Default is True.
-        write_csv (bool, optional): Flag to write CSV file or not. Default is True.
+        write_info (bool, optional): Write informational remarks or not. Default is True.
+        write_file (bool, optional): Output a file or not. Default is True.
+        output_dictionary (bool, optional): Output a dictionary or not. Default is True.
+        file_separator (str, optional): Separator character for file. Default is ',', '\t' can be used to make a tsv.
         output_header (bool, optional): Flag to write header row in CSV file or not. Default is True.
         unique_run_id (str, optional): Unique identifier for the run to avoid file name conflictsand also used to name ligand poses. Default is None.
         **user_config: Arbitrary keyword arguments for overriding default docking parameters.
@@ -202,6 +204,10 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         None
 
     """
+    if not write_file and not output_dictionary:
+        raise TypeError("At least one of write_file or output_dictionary must be specified. "
+                        "Both can be True at the same time.")
+
     time_start = timeit.default_timer()
     save_time = False
     default_cf = 100000000
@@ -261,14 +267,17 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
             output_file_basename += f"_split_{start}_{end}"
         if unique_run_id:
             output_file_basename += f"_run_{unique_run_id}"
-    output_file_path = os.path.join(result_folder_path, f'{output_file_basename}.csv')
-
+    if file_separator == ',':
+        output_file_path = os.path.join(result_folder_path, f'{output_file_basename}.csv')
+    elif file_separator == '\t':
+        output_file_path = os.path.join(result_folder_path, f'{output_file_basename}.tsv')
+    else:
+        output_file_path = os.path.join(result_folder_path, f'{output_file_basename}.txt')
     counter = 1
     duplicate_file = False
     while os.path.isfile(output_file_path):
         counter += 1
         output_file_path = os.path.join(result_folder_path, f'{output_file_basename}_({counter}).csv')
-
         duplicate_file = True
     if duplicate_file:
         ligand_pose_save_path += f"_({counter})"
@@ -355,7 +364,8 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
                     pose_file_name += f'_pose_{pose_number+1}'
                 extra_info = [
                               f"REMARK CF: {cfs_list[sorted_indices[pose_number]][0]:.2f}\n",
-                              f"REMARK atom types: {np.array2string(molecule_atom_types, separator=' ', max_line_width=2000).strip('[]')}\n"
+                              f"REMARK atom types: {np.array2string(molecule_atom_types, separator=' ', 
+                                                                    max_line_width=2000).strip('[]')}\n"
                 ]
                 if unique_run_id:
                     extra_info.append(f"REMARK unique_run_ID: {unique_run_id}\n")
@@ -367,43 +377,52 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         info_lines.append(f"REMARK total screen time: {timeit.default_timer() - time_start:.3f} seconds")
         if params_dict['VERBOSE']:
             print(output_lines[-1])
-
+    molecule_name_cleaned = [molecule_name.rsplit('_', 1)[0] for molecule_name in molecule_name_array]
+    molecule_conformer_number = [molecule_name.rsplit('_', 1)[1] for molecule_name in molecule_name_array]
     if write_info:
         info_file_path = os.path.splitext(output_file_path)[0] + f'_info.txt'
         with open(info_file_path, "w") as f:
             f.writelines("\n".join(info_lines))
-
-    csv_header = "Name,CF"
-    if ligand_type != 'ligand':
-        csv_header += ',Type'
-    if conf_num > 1:
-        csv_header += ",Conformer_number"
-    if save_time:
-        csv_header += ",Time"
-    if not write_csv:
-        csv_header += ",Binding site"
-    if output_header:
-        output_lines.append(csv_header)
-    for z, ligand in enumerate(atoms_per_molecule_array):
-        output = f"'{molecule_name_array[z].rsplit('_', 1)[0]}',{cfs_list_by_ligand[z]:.0f}"
+    if write_file:
+        file_header = "Name,Score"
         if ligand_type != 'ligand':
-            output += f',{ligand_type}'
+            file_header += ',Type'
         if conf_num > 1:
-            try:
-                output += "," + molecule_name_array[z].rsplit('_', 1)[1]
-            except:
-                output += f",{str(0)}"
+            file_header += ",Conformer number"
         if save_time:
-            output += f",{time_list[z]:.3f}"
-        if not write_csv:
-            output += f",{target_name}"
-        output_lines.append(output)
-    if write_csv:
-        with open(output_file_path, "w") as f:
-            f.writelines("\n".join(output_lines))
-            f.write("\n")
+            file_header += ",Time"
+        if not write_file:
+            file_header += ",Binding site"
+        if output_header:
+            output_lines.append(file_header)
+        for z, ligand in enumerate(atoms_per_molecule_array):
+            output = f'"{molecule_name_cleaned[z]}",{cfs_list_by_ligand[z]:.0f}'
+            if ligand_type != 'ligand':
+                output += f',{ligand_type}'
+            if conf_num > 1:
+                output += f",{molecule_conformer_number[z]}"
+            if save_time:
+                output += f",{time_list[z]:.3f}"
+            if not write_file:
+                output += f",{target_name}"
+            output_lines.append(output)
+        if file_separator != ',':
+            output_lines = [line.replace(',', file_separator) for line in output_lines]
+        if write_file:
+            with open(output_file_path, "w") as f:
+                f.writelines("\n".join(output_lines))
+                f.write("\n")
     else:
         output_file_path = None
     if params_dict['VERBOSE']:
         print("\n".join(output_lines))
-    return output_file_path, output_lines
+    if output_dictionary:
+        output_dictionary = {'Names': molecule_name_cleaned, 'Score': cfs_list_by_ligand, 'Type': ligand_type,
+                             'Binding site': target_name}
+        if conf_num > 1:
+            output_dictionary['Conformer number'] = molecule_conformer_number
+        if save_time:
+            output_dictionary['Time'] = time_list
+    else:
+        output_dictionary = None
+    return output_file_path, output_dictionary
