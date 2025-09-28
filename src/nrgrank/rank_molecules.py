@@ -176,7 +176,8 @@ def get_cf_main_clash(binding_site_grid, ligand_orientations, cf_size_list, n_cf
 
 def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result_folder_path,
          result_csv_and_pose_name=None, ligand_type='ligand', ligand_slice=None, write_info=True, write_file=True,
-         file_separator=',', output_header=True, output_dictionary=True, unique_run_id=None, **user_config):
+         file_separator=',', output_header=True, output_dictionary=True, save_time=False, normalise_score=False,
+         unique_run_id=None, **user_config):
     """
 
     Parameters:
@@ -192,6 +193,8 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         output_dictionary (bool, optional): Output a dictionary or not. Default is True.
         file_separator (str, optional): Separator character for file. Default is ',', '\t' can be used to make a tsv.
         output_header (bool, optional): Flag to write header row in CSV file or not. Default is True.
+        save_time (bool, optional): Save time taken per molecule for docking. Default is False.
+        normalise_score (bool, optional): Normalise the docking score by the number of atoms in the molecule. Default is False.
         unique_run_id (str, optional): Unique identifier for the run to avoid file name conflictsand also used to name ligand poses. Default is None.
         **user_config: Arbitrary keyword arguments for overriding default docking parameters.
 
@@ -209,7 +212,6 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
                         "Both can be True at the same time.")
 
     time_start = timeit.default_timer()
-    save_time = False
     default_cf = 100000000
     info_lines = []
     output_lines = []
@@ -379,12 +381,17 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
             print(output_lines[-1])
     molecule_name_cleaned = [molecule_name.rsplit('_', 1)[0] for molecule_name in molecule_name_array]
     molecule_conformer_number = [molecule_name.rsplit('_', 1)[1] for molecule_name in molecule_name_array]
+    cfs_list_by_ligand = np.rint(cfs_list_by_ligand).astype(np.int64)
+    if normalise_score:
+        normalised_score = np.rint(cfs_list_by_ligand/atoms_per_molecule_array).astype(np.int64)
     if write_info:
         info_file_path = os.path.splitext(output_file_path)[0] + f'_info.txt'
         with open(info_file_path, "w") as f:
             f.writelines("\n".join(info_lines))
     if write_file:
         file_header = "Name,Score"
+        if normalise_score:
+            file_header += ',Normalised score by atom count'
         if ligand_type != 'ligand':
             file_header += ',Type'
         if conf_num > 1:
@@ -396,7 +403,9 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
         if output_header:
             output_lines.append(file_header)
         for z, ligand in enumerate(atoms_per_molecule_array):
-            output = f'"{molecule_name_cleaned[z]}",{cfs_list_by_ligand[z]:.0f}'
+            output = f'"{molecule_name_cleaned[z]}",{cfs_list_by_ligand[z]}'
+            if normalise_score:
+                output += f',{normalised_score[z]}'
             if ligand_type != 'ligand':
                 output += f',{ligand_type}'
             if conf_num > 1:
@@ -419,6 +428,8 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
     if output_dictionary:
         output_dictionary = {'Names': molecule_name_cleaned, 'Score': cfs_list_by_ligand, 'Type': ligand_type,
                              'Binding site': target_name}
+        if normalise_score:
+            output_dictionary['Normalised score by atom count'] = normalised_score
         if conf_num > 1:
             output_dictionary['Conformer number'] = molecule_conformer_number
         if save_time:
