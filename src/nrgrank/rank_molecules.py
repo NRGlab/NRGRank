@@ -366,8 +366,8 @@ def main(target_name, preprocessed_target_path, preprocessed_ligand_path, result
                     pose_file_name += f'_pose_{pose_number+1}'
                 extra_info = [
                               f"REMARK CF: {cfs_list[sorted_indices[pose_number]][0]:.2f}\n",
-                              f"REMARK atom types: {np.array2string(molecule_atom_types, separator=' ', 
-                                                                    max_line_width=2000).strip('[]')}\n"
+                              f"REMARK atom types: "
+                              f"{np.array2string(molecule_atom_types, separator=' ',max_line_width=2000).strip('[]')}\n"
                 ]
                 if unique_run_id:
                     extra_info.append(f"REMARK unique_run_ID: {unique_run_id}\n")
