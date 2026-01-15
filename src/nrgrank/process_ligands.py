@@ -18,6 +18,9 @@ def load_atoms_mol2(filename, save_path, ligand_type='ligand'):
     with open(filename) as f:
         lines = f.readlines()
 
+    if len(lines) == 0:
+        raise ValueError("Ligand input file is empty")
+
     for counter, line in enumerate(lines):
         if line.startswith('@<TRIPOS>MOLECULE'):
             n_molecules += 1

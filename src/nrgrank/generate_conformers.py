@@ -18,7 +18,7 @@ import argparse
 def require_rdkit(feature: str = "this feature") -> None:
     if not HAS_RDKIT:
         raise ImportError(
-            f"RDKit is required for {feature}. Install with 'pip install nrgrank[rdkit]' "
+            f'RDKit is required for {feature}. Install with pip install "nrgrank[rdkit]" '
             f"or ensure RDKit is available in your environment."
         )
 

@@ -5,6 +5,14 @@ Use the following command:
 ```
 pip install nrgrank
 ```
+
+To install nrgrank with rdkit for generating conformers:
+
+```
+pip install "nrgrank[rdkit]"
+```
+
+
 Using NRGRank in a python script:
 
 ```
